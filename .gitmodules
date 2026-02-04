@@ -1,0 +1,3 @@
+[submodule "strategy_resource_rl"]
+	path = strategy_resource_rl
+	url = https://github.com/wikto398/strategy_resource_rl

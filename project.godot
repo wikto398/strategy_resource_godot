@@ -1,0 +1,44 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="strategy_ai"
+run/main_scene="uid://d3ifaj17vcjw5"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Enums="*uid://cl25beyu3ts0a"
+Shaders="*uid://bno5e1jm3g10e"
+Icons="*uid://f87pw3ijqnob"
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/stretch/mode="viewport"
+window/stretch/aspect="expand"
+
+[editor]
+
+naming/node_name_num_separator=2
+naming/scene_name_casing=1
+naming/script_name_casing=1
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+rendering_device/driver.windows="d3d12"

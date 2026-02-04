@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Building" format=3 uid="uid://b8pdwkckajd6n"]
+
+[ext_resource type="Texture2D" uid="uid://dhvnwwhl8t0y0" path="res://icon.svg" id="1_ar3t5"]
+[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_u6dyh"]
+
+[resource]
+script = ExtResource("1_u6dyh")
+name = "Sawmill"
+icon = ExtResource("1_ar3t5")
+production_rate = 5
+upkeep_cost = 2
+build_time = 15.0
+required_nearby_terrain = Array[int]([1])
+metadata/_custom_type_script = "uid://dn11rowigyswq"

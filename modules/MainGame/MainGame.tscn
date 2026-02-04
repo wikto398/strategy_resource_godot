@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://d3ifaj17vcjw5"]
+
+[ext_resource type="Script" uid="uid://cct3buqlif13s" path="res://modules/MainGame/MainGame.gd" id="1_1cjsp"]
+[ext_resource type="PackedScene" uid="uid://cv6ordwtq1xd" path="res://modules/FieldGrid/FieldGrid.tscn" id="2_k75fg"]
+[ext_resource type="Script" uid="uid://2ia1jf1orr1b" path="res://modules/BuildHandler/BuildHandler.gd" id="3_sek8c"]
+[ext_resource type="PackedScene" uid="uid://nbxeg3jhhghn" path="res://ui/ProductionUI/ProductionUI.tscn" id="3_sre2q"]
+[ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/wood/Sawmill.tres" id="4_hxiv1"]
+[ext_resource type="Script" uid="uid://d05nuswnhnsd1" path="res://modules/ProductionHandler/ProductionHandler.gd" id="5_76dbn"]
+
+[node name="MainGame" type="Node2D" unique_id=1044607965]
+script = ExtResource("1_1cjsp")
+
+[node name="FieldGrid" parent="." unique_id=1706481387 instance=ExtResource("2_k75fg")]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=765600916]
+
+[node name="ProductionUi" parent="CanvasLayer" unique_id=215937319 instance=ExtResource("3_sre2q")]
+
+[node name="ProductionHandler" type="Node" parent="." unique_id=219689088]
+script = ExtResource("5_76dbn")
+metadata/_custom_type_script = "uid://d05nuswnhnsd1"
+
+[node name="BuildHandler" type="Node" parent="." unique_id=1262118961 node_paths=PackedStringArray("field_grid", "production_handler")]
+script = ExtResource("3_sek8c")
+field_grid = NodePath("../FieldGrid")
+production_handler = NodePath("../ProductionHandler")
+current_building = ExtResource("4_hxiv1")
+metadata/_custom_type_script = "uid://2ia1jf1orr1b"
