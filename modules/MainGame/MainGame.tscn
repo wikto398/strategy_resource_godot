@@ -6,6 +6,9 @@
 [ext_resource type="PackedScene" uid="uid://nbxeg3jhhghn" path="res://ui/ProductionUI/ProductionUI.tscn" id="3_sre2q"]
 [ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/wood/Sawmill.tres" id="4_hxiv1"]
 [ext_resource type="Script" uid="uid://d05nuswnhnsd1" path="res://modules/ProductionHandler/ProductionHandler.gd" id="5_76dbn"]
+[ext_resource type="Script" uid="uid://cylnxebl4k202" path="res://godot_tools/SenderInterface/UDPSender/UDPSender.gd" id="7_4qgy0"]
+[ext_resource type="Script" uid="uid://3or6qutytso1" path="res://godot_tools/EnvironmentConnector/EnvironmentConnector.gd" id="7_x5mob"]
+[ext_resource type="Script" uid="uid://cyaqqyggjbg8m" path="res://godot_tools/ReceiverInterface/UDPReceiver/UDPReceiver.gd" id="8_8hgnl"]
 
 [node name="MainGame" type="Node2D" unique_id=1044607965]
 script = ExtResource("1_1cjsp")
@@ -26,3 +29,13 @@ field_grid = NodePath("../FieldGrid")
 production_handler = NodePath("../ProductionHandler")
 current_building = ExtResource("4_hxiv1")
 metadata/_custom_type_script = "uid://2ia1jf1orr1b"
+
+[node name="EnvironmentConnector" type="Node" parent="." unique_id=1115111301]
+script = ExtResource("7_x5mob")
+metadata/_custom_type_script = "uid://3or6qutytso1"
+
+[node name="Receiver" type="Node" parent="EnvironmentConnector" unique_id=937873399]
+script = ExtResource("8_8hgnl")
+
+[node name="Sender" type="Node" parent="EnvironmentConnector" unique_id=1831650788]
+script = ExtResource("7_4qgy0")
