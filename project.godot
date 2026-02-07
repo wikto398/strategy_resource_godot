@@ -20,6 +20,9 @@ config/icon="res://icon.svg"
 Enums="*uid://cl25beyu3ts0a"
 Shaders="*uid://bno5e1jm3g10e"
 Icons="*uid://f87pw3ijqnob"
+RlCommunicator="*uid://col72qio4itno"
+Turn="*uid://bvgwnnc28a51r"
+ResourceDatabase="*uid://b56pm2phycwx3"
 
 [display]
 

@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://col72qio4itno"]
+
+[ext_resource type="Script" uid="uid://3or6qutytso1" path="res://godot_tools/EnvironmentConnector/EnvironmentConnector.gd" id="1_35hjk"]
+[ext_resource type="Script" uid="uid://cyaqqyggjbg8m" path="res://godot_tools/ReceiverInterface/UDPReceiver/UDPReceiver.gd" id="2_wkqqd"]
+[ext_resource type="Script" uid="uid://cylnxebl4k202" path="res://godot_tools/SenderInterface/UDPSender/UDPSender.gd" id="3_8elo5"]
+
+[node name="RlCommunicator" type="Node" unique_id=1558607437]
+
+[node name="EnvironmentConnector" type="Node" parent="." unique_id=491089644]
+script = ExtResource("1_35hjk")
+metadata/_custom_type_script = "uid://3or6qutytso1"
+
+[node name="Receiver" type="Node" parent="EnvironmentConnector" unique_id=234704337]
+script = ExtResource("2_wkqqd")
+
+[node name="Sender" type="Node" parent="EnvironmentConnector" unique_id=240640083]
+script = ExtResource("3_8elo5")

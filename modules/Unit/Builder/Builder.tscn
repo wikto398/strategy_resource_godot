@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://vgsn6mcridso"]
+
+[ext_resource type="Script" uid="uid://dtum8abd3yjts" path="res://modules/Unit/Builder/Builder.gd" id="1_n7cvv"]
+[ext_resource type="Texture2D" uid="uid://ikoviu31rtcu" path="res://assets/units/builder.png" id="2_81q6a"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_wrokc"]
+
+[node name="Builder" type="Node2D" unique_id=1311362941]
+script = ExtResource("1_n7cvv")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1190808165]
+texture = ExtResource("2_81q6a")
+hframes = 4
+vframes = 3
+
+[node name="Area2D" type="Area2D" parent="." unique_id=428854113]
+collision_layer = 3
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1906969576]
+shape = SubResource("CircleShape2D_wrokc")
+debug_color = Color(0.60987985, 0.53951544, 0, 0.41960785)
+
+[connection signal="input_event" from="Area2D" to="." method="_on_area_2d_input_event"]

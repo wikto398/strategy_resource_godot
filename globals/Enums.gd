@@ -1,6 +1,6 @@
 extends Node
 
-enum TownResouce {
+enum TownResource {
     WOOD,
     STONE,
     FOOD,

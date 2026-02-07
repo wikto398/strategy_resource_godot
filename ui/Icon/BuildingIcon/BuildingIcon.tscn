@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://l5uuhltemx1j"]
+
+[ext_resource type="Script" uid="uid://b7h2077jjks24" path="res://ui/Icon/BuildingIcon/BuildingIcon.gd" id="1_ulefe"]
+[ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/wood/Sawmill.tres" id="2_xu7cv"]
+
+[node name="BuildingIcon" type="PanelContainer" unique_id=499988618]
+custom_minimum_size = Vector2(48, 48)
+script = ExtResource("1_ulefe")
+building = ExtResource("2_xu7cv")
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=345898751]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="TextureRect" type="TextureRect" parent="MarginContainer" unique_id=109049323]
+layout_mode = 2
+expand_mode = 4
+stretch_mode = 5

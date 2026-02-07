@@ -1,10 +1,10 @@
-class_name ResourceIcon extends MarginContainer 
+class_name ResourceIcon extends Icon 
 
-@onready var icon_texture: TextureRect = $VBoxContainer/TextureRect
-@onready var amount_label: Label = $VBoxContainer/Amount
-@onready var current_production_label: Label = $VBoxContainer/CurrentProduction
+@onready var icon_texture: TextureRect = $MarginContainer/HBoxContainer/TextureRect
+@onready var amount_label: Label = $MarginContainer/HBoxContainer/Amount
+@onready var current_production_label: Label = $MarginContainer/HBoxContainer/CurrentProduction
 
-@export var resource_type: Enums.TownResouce = Enums.TownResouce.WOOD:
+@export var resource_type: Enums.TownResource = Enums.TownResource.WOOD:
 	set(value):
 		resource_type = value
 		if icon_texture:
@@ -30,7 +30,7 @@ func _ready() -> void:
 	amount_label.text = str(amount)
 	_set_current_production_label()
 
-func initialization(_resource_type: Enums.TownResouce, _amount: int) -> void:
+func initialization(_resource_type: Enums.TownResource, _amount: int) -> void:
 	resource_type = _resource_type
 	amount = _amount
 
@@ -43,3 +43,11 @@ func _set_current_production_label() -> void:
 	elif current_production < 0:
 		str_value = "-" + str_value
 	current_production_label.text = str_value
+
+func get_data():
+	return {
+		"resource_type": resource_type,
+		"amount": amount,
+		"current_production": current_production,
+		"include_current_production": include_current_production
+	}

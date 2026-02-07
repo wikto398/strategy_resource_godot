@@ -1,10 +1,10 @@
 class_name GameData extends Resource
 
-@export var town_resources: Dictionary[Enums.TownResouce, int] = {
-    Enums.TownResouce.WOOD: 0,
-    Enums.TownResouce.STONE: 0,
-    Enums.TownResouce.FOOD: 0,
-    Enums.TownResouce.GOLD: 0
+@export var town_resources: Dictionary[Enums.TownResource, int] = {
+    Enums.TownResource.WOOD: 0,
+    Enums.TownResource.STONE: 0,
+    Enums.TownResource.FOOD: 0,
+    Enums.TownResource.GOLD: 0
 } 
 
 @export var population: int = 1:

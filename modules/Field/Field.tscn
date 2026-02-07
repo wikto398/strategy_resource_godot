@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://w2uiwwy38hmo" path="res://assets/terrain/grass/grass_01.png" id="2_o06qu"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o06qu"]
-radius = 12.0
+radius = 20.0
 
 [node name="Field" type="Node2D" unique_id=2042672776]
 script = ExtResource("1_3suqe")
@@ -12,12 +12,12 @@ script = ExtResource("1_3suqe")
 [node name="Elements" type="Node2D" parent="." unique_id=1927334531]
 use_parent_material = true
 
-[node name="Building" type="Sprite2D" parent="Elements" unique_id=234984237]
-use_parent_material = true
-
 [node name="Terrain" type="Sprite2D" parent="Elements" unique_id=1256100188]
 use_parent_material = true
 texture = ExtResource("2_o06qu")
+
+[node name="Building" type="Sprite2D" parent="Elements" unique_id=234984237]
+use_parent_material = true
 
 [node name="Area2D" type="Area2D" parent="." unique_id=600362005]
 

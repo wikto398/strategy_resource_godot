@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://x4hnh42jglv4"]
+
+[ext_resource type="Script" uid="uid://b54l8bd7fqe86" path="res://ui/Icon/ResourceIcon/ResourceIcon.gd" id="1_qacdb"]
+
+[node name="ResourceIcon" type="PanelContainer" unique_id=888654790]
+offset_right = 1.0
+offset_bottom = 54.0
+script = ExtResource("1_qacdb")
+include_current_production = true
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1280475595]
+layout_mode = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer" unique_id=1550779455]
+layout_mode = 2
+
+[node name="TextureRect" type="TextureRect" parent="MarginContainer/HBoxContainer" unique_id=2026325018]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 2
+stretch_mode = 5
+
+[node name="VSeparator" type="VSeparator" parent="MarginContainer/HBoxContainer" unique_id=789543031]
+layout_mode = 2
+
+[node name="Amount" type="Label" parent="MarginContainer/HBoxContainer" unique_id=668218910]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 6
+horizontal_alignment = 1
+
+[node name="VSeparator_2" type="VSeparator" parent="MarginContainer/HBoxContainer" unique_id=301424525]
+layout_mode = 2
+
+[node name="CurrentProduction" type="Label" parent="MarginContainer/HBoxContainer" unique_id=883041975]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 1

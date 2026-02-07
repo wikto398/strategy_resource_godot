@@ -4,20 +4,22 @@
 [ext_resource type="PackedScene" uid="uid://cv6ordwtq1xd" path="res://modules/FieldGrid/FieldGrid.tscn" id="2_k75fg"]
 [ext_resource type="Script" uid="uid://2ia1jf1orr1b" path="res://modules/BuildHandler/BuildHandler.gd" id="3_sek8c"]
 [ext_resource type="PackedScene" uid="uid://nbxeg3jhhghn" path="res://ui/ProductionUI/ProductionUI.tscn" id="3_sre2q"]
-[ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/wood/Sawmill.tres" id="4_hxiv1"]
+[ext_resource type="PackedScene" uid="uid://ch84f053mjx2" path="res://ui/BuildingSelector/BuildingSelector.tscn" id="4_8hgnl"]
 [ext_resource type="Script" uid="uid://d05nuswnhnsd1" path="res://modules/ProductionHandler/ProductionHandler.gd" id="5_76dbn"]
-[ext_resource type="Script" uid="uid://cylnxebl4k202" path="res://godot_tools/SenderInterface/UDPSender/UDPSender.gd" id="7_4qgy0"]
-[ext_resource type="Script" uid="uid://3or6qutytso1" path="res://godot_tools/EnvironmentConnector/EnvironmentConnector.gd" id="7_x5mob"]
-[ext_resource type="Script" uid="uid://cyaqqyggjbg8m" path="res://godot_tools/ReceiverInterface/UDPReceiver/UDPReceiver.gd" id="8_8hgnl"]
+[ext_resource type="Script" uid="uid://gkcvc6ygfj37" path="res://modules/BuilderController/BuilderController.gd" id="7_4qgy0"]
+[ext_resource type="Script" uid="uid://26jv5di0g5o4" path="res://modules/Camera/Camera.gd" id="7_x5mob"]
+[ext_resource type="Script" uid="uid://b0c4ku07a4jq5" path="res://modules/ActionHandler/ActionHandler.gd" id="8_8hgnl"]
 
 [node name="MainGame" type="Node2D" unique_id=1044607965]
 script = ExtResource("1_1cjsp")
 
 [node name="FieldGrid" parent="." unique_id=1706481387 instance=ExtResource("2_k75fg")]
 
-[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=765600916]
+[node name="UI" type="CanvasLayer" parent="." unique_id=765600916]
 
-[node name="ProductionUi" parent="CanvasLayer" unique_id=215937319 instance=ExtResource("3_sre2q")]
+[node name="ProductionUI" parent="UI" unique_id=215937319 instance=ExtResource("3_sre2q")]
+
+[node name="BuildingSelector" parent="UI" unique_id=702721349 instance=ExtResource("4_8hgnl")]
 
 [node name="ProductionHandler" type="Node" parent="." unique_id=219689088]
 script = ExtResource("5_76dbn")
@@ -27,15 +29,17 @@ metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 script = ExtResource("3_sek8c")
 field_grid = NodePath("../FieldGrid")
 production_handler = NodePath("../ProductionHandler")
-current_building = ExtResource("4_hxiv1")
 metadata/_custom_type_script = "uid://2ia1jf1orr1b"
 
-[node name="EnvironmentConnector" type="Node" parent="." unique_id=1115111301]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1632065980]
 script = ExtResource("7_x5mob")
-metadata/_custom_type_script = "uid://3or6qutytso1"
 
-[node name="Receiver" type="Node" parent="EnvironmentConnector" unique_id=937873399]
-script = ExtResource("8_8hgnl")
-
-[node name="Sender" type="Node" parent="EnvironmentConnector" unique_id=1831650788]
+[node name="BuilderController" type="Node" parent="." unique_id=1261769052]
 script = ExtResource("7_4qgy0")
+metadata/_custom_type_script = "uid://gkcvc6ygfj37"
+
+[node name="Units" type="Node2D" parent="." unique_id=1720768042]
+
+[node name="ActionHandler" type="Node" parent="." unique_id=1426687910]
+script = ExtResource("8_8hgnl")
+metadata/_custom_type_script = "uid://b0c4ku07a4jq5"

@@ -1,7 +1,12 @@
 class_name FieldGrid
 extends Node2D
 
+const PROBABILITY_WATER_TO_GRASS = [1, 3]
+const PROBABILITY_BORDER_GRASS = [1, 4, 2]
+const PROBABILITY_INNER_GRASS = [1, 6, 3]
+
 signal unhighlight_all_fields
+signal update_visuals()
 signal field_clicked(field: Field)
 
 @export var columns: int
@@ -12,35 +17,49 @@ var fields: Dictionary = {}
 
 func _ready():
 	_add_empty_fields()
+	generate_ca_map(3)
+	_set_boundary_fields()
+	_fill_island_with_terrain()
+	update_visuals.emit()
 	_center()
 
 func _add_empty_fields():
 	var field_scene = load("uid://bfrqdhxq3pe6x")
-
+	var base_terrains = [Terrain.TerrainType.WATER, Terrain.TerrainType.GRASS]
+	var random = RandomNumberGenerator.new()
 	for q in range(columns):
 		for r in range(rows):
 			var field := field_scene.instantiate() as Field
-			field.terrain_type = Terrain.TerrainType.values().pick_random()
+			field.terrain_type = base_terrains[random.rand_weighted(PROBABILITY_WATER_TO_GRASS)]
 			add_child(field)
 			unhighlight_all_fields.connect(field._on_unhighlight)
 			field.field_clicked.connect(_on_field_clicked)
+			update_visuals.connect(field._set_texture)
 
-			field.z_index = q + r * columns
+			# field.z_index = q + r * columns
 
 			var pos := _hex_to_pixel(q, r)
 			field.position = pos
 
 			var tex_size := field.terrain.texture.get_size()
 			var hex_scale := (2.0 * hex_size) / tex_size.y
-			field.elements.scale = Vector2.ONE * hex_scale
+			field.scale = Vector2.ONE * hex_scale
 
 			fields[Vector2i(q, r)] = field
 			field.grid_position = Vector2i(q, r)
+
+func _set_boundary_fields():
+	for coords in fields:
+		if _is_boundary(coords):
+			fields[coords].terrain_type = Terrain.TerrainType.WATER
 
 func _hex_to_pixel(q: int, r: int) -> Vector2:
 	var x := hex_size * sqrt(3) * (q + 0.5 * (r & 1))
 	var y := hex_size * 1.5 * r
 	return Vector2(x, y)
+
+func _is_boundary(v: Vector2i) -> bool:
+	return v.x == 0 or v.y == 0 or v.x == columns - 1 or v.y == rows - 1
 
 func get_field_at(v: Vector2i) -> Field:
 	return fields.get(v, null)
@@ -84,5 +103,67 @@ func _center():
 	position = viewport_center - grid_center
 
 func _on_field_clicked(field: Field) -> void:
-	print("Field clicked at position: ", field.grid_position)
+	print("Field clicked at position: ", field.grid_position, " with global position: ", field.global_position)
 	field_clicked.emit(field)
+
+func generate_ca_map(iterations: int = 3):
+	for i in range(iterations):
+		_run_ca_step()
+
+func _run_ca_step():
+	var new_types = {}
+
+	for coords in fields:
+		var grass_neighbors = 0
+		var neighbors = get_neighbors(coords)
+		
+		for n in neighbors:
+			if n.terrain_type == Terrain.TerrainType.GRASS:
+				grass_neighbors += 1
+		
+		var current_type = fields[coords].terrain_type
+		if current_type == Terrain.TerrainType.GRASS:
+			new_types[coords] = Terrain.TerrainType.GRASS if grass_neighbors >= 4 else Terrain.TerrainType.WATER
+		else:
+			new_types[coords] = Terrain.TerrainType.GRASS if grass_neighbors >= 5 else Terrain.TerrainType.WATER
+
+	for coords in new_types:
+		fields[coords].terrain_type = new_types[coords]
+
+func _fill_island_with_terrain():
+	var borders = []
+	var non_borders = []
+	var is_border = false
+	for coords in fields:
+		var field = fields[coords]
+		is_border = false
+		if field.terrain_type == Terrain.TerrainType.GRASS:
+			var neighbors = get_neighbors(coords)
+			for n in neighbors:
+				if n.terrain_type == Terrain.TerrainType.WATER:
+					is_border = true
+					break
+			if is_border:
+				borders.append(field)
+			else:
+				non_borders.append(field)
+	
+	var random = RandomNumberGenerator.new()
+	var terrain_types = [Terrain.TerrainType.SAND, Terrain.TerrainType.GRASS, Terrain.TerrainType.MOUNTAIN]
+	for border_field in borders:
+		border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_BORDER_GRASS)]
+
+	for non_border_field in non_borders:
+		non_border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_INNER_GRASS)]
+
+func debug():
+	var test_coord = Vector2i(8, 1) # One of the coordinates you provided
+	var f = get_field_at(test_coord)
+	if f:
+		print("Field (8, 1) exists in dictionary.")
+		var n_list = get_neighbors(test_coord)
+		print("It has ", n_list.size(), " neighbors found in the dictionary.")
+		for n in n_list:
+			print("   Neighbor found at: ", n.grid_position)
+	else:
+		print("CRITICAL: Field (8, 1) is NOT in the dictionary! Check your generation loop.")
