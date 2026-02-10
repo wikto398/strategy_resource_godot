@@ -1,6 +1,6 @@
 extends Node
 
-const BUILDING_PATH = "res://resources/buildings/"
+const BUILDING_PATH = "res://resources/buildings/production/"
 
 func load_buildings() -> Array[Building]:
 	var buildings: Array[Building] = []

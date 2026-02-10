@@ -20,7 +20,7 @@ func _ready() -> void:
 	_setup_production_handler()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed: 
+	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F1:
 				print("Reloading scene...")

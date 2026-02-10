@@ -4,7 +4,7 @@ class_name ProductionUI extends Control
 
 var resource_icons: Dictionary[Enums.TownResource, ResourceIcon] = {}
 
-var RESOURCE_ICON_SCENE: PackedScene = preload("uid://x4hnh42jglv4") 
+var RESOURCE_ICON_SCENE: PackedScene = preload("uid://x4hnh42jglv4")
 
 func _ready() -> void:
 	for resource in Enums.TownResource.values():
@@ -24,8 +24,9 @@ func _on_update_resources(town_resources: Dictionary[Enums.TownResource, int]) -
 	for resource in town_resources.keys():
 		if resource_icons.has(resource):
 			resource_icons[resource].amount = int(town_resources[resource])
-		
+
 func _on_update_production(current_production: Dictionary[Enums.TownResource, int]) -> void:
+	print("Updating production UI with current production: ", current_production)
 	for resource in current_production.keys():
 		if resource_icons.has(resource):
 			resource_icons[resource].current_production = current_production[resource]

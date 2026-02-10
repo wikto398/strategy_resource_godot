@@ -15,7 +15,13 @@ signal field_clicked(field: Field)
 
 var fields: Dictionary = {}
 
+static var instance: FieldGrid = null
+
 func _ready():
+	if instance:
+		push_error("Multiple instances of FieldGrid detected. This is not supported.")
+	else:
+		instance = self
 	_add_empty_fields()
 	generate_ca_map(3)
 	_set_boundary_fields()
@@ -87,19 +93,19 @@ func get_neighbors(v: Vector2i) -> Array[Field]:
 
 func _center():
 	var viewport_center := get_viewport_rect().size * 0.5
-	
+
 	var children = get_children()
 	if children.size() == 0: return
-	
+
 	var rect = Rect2(children[0].position, Vector2.ZERO)
-	
+
 	for i in range(1, children.size()):
 		var field = children[i]
 		if field is Node2D:
 			rect = rect.expand(field.position)
-	
+
 	var grid_center = rect.position + (rect.size * 0.5)
-	
+
 	position = viewport_center - grid_center
 
 func _on_field_clicked(field: Field) -> void:
@@ -116,11 +122,11 @@ func _run_ca_step():
 	for coords in fields:
 		var grass_neighbors = 0
 		var neighbors = get_neighbors(coords)
-		
+
 		for n in neighbors:
 			if n.terrain_type == Terrain.TerrainType.GRASS:
 				grass_neighbors += 1
-		
+
 		var current_type = fields[coords].terrain_type
 		if current_type == Terrain.TerrainType.GRASS:
 			new_types[coords] = Terrain.TerrainType.GRASS if grass_neighbors >= 4 else Terrain.TerrainType.WATER
@@ -147,7 +153,7 @@ func _fill_island_with_terrain():
 				borders.append(field)
 			else:
 				non_borders.append(field)
-	
+
 	var random = RandomNumberGenerator.new()
 	var terrain_types = [Terrain.TerrainType.SAND, Terrain.TerrainType.GRASS, Terrain.TerrainType.MOUNTAIN]
 	for border_field in borders:
@@ -156,14 +162,5 @@ func _fill_island_with_terrain():
 	for non_border_field in non_borders:
 		non_border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_INNER_GRASS)]
 
-func debug():
-	var test_coord = Vector2i(8, 1) # One of the coordinates you provided
-	var f = get_field_at(test_coord)
-	if f:
-		print("Field (8, 1) exists in dictionary.")
-		var n_list = get_neighbors(test_coord)
-		print("It has ", n_list.size(), " neighbors found in the dictionary.")
-		for n in n_list:
-			print("   Neighbor found at: ", n.grid_position)
-	else:
-		print("CRITICAL: Field (8, 1) is NOT in the dictionary! Check your generation loop.")
+func _calculate_field_bonuses():
+	pass

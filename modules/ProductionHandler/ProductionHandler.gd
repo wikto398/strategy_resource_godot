@@ -8,7 +8,7 @@ signal production_updated(current_production: Dictionary[Enums.TownResource, int
 	Enums.TownResource.STONE: 100,
 	Enums.TownResource.FOOD: 100,
 	Enums.TownResource.GOLD: 100
-} 
+}
 @export var max_capacity: int = 10000
 
 var current_production: Dictionary[Enums.TownResource, int] = {
@@ -17,9 +17,6 @@ var current_production: Dictionary[Enums.TownResource, int] = {
 	Enums.TownResource.FOOD: 0,
 	Enums.TownResource.GOLD: 0
 }
-
-var buildings: Array[Building] = []
-var in_production: Dictionary[Field, Building] = {} 
 
 func can_afford(cost: Dictionary[Enums.TownResource, int]) -> bool:
 	for resource in cost.keys():
@@ -31,50 +28,35 @@ func start_production(building: Building, field: Field) -> void:
 	print("Starting production of building: ", building.name)
 	for resource in building.build_cost.keys():
 		town_resources[resource] -= building.build_cost[resource]
-	in_production[field] = building
+	field.in_progress_building = building
+	if field.unit is Builder:
+		field.unit.state_machine.change_state("building")
 	resources_updated.emit(town_resources)
-
-func _process_building_production() -> void:
-	for field in in_production:
-		var building: Building = in_production[field]
-		if not field.unit or not field.unit is Builder:
-			print("No builder assigned to field at ", field.grid_position, " for building ", building.name)
-			continue
-		print("Processing production for building: ", building.name, " at field: ", field.grid_position, " - Progress: ", building.building_progress, "/", building.build_time)
-		building.building_progress += 1
-		if building.building_progress >= building.build_time:
-			_building_finished(building, field)
-
-func _process_resource_production() -> void:
-	for resource in current_production:
-		town_resources[resource] = clamp(
-			town_resources[resource] + current_production[resource],
-			0.0,
-			max_capacity
-		)
-	resources_updated.emit(town_resources)
-
-func _building_finished(building: Building, field: Field) -> void:
-	print("Building finished: ", building.name, " at field: ", field.grid_position)
-	buildings.append(building)
-	in_production.erase(field)
-	building.building_progress = 0.0
-	resources_updated.emit(town_resources)
-	_update_production()
-
-func _update_production() -> void:
-	current_production.clear()
-	for resource in Enums.TownResource.values():
-		current_production[resource] = 0
-	for building in buildings:
-		current_production[building.produced_resource] += building.production_rate
-	production_updated.emit(current_production)
-
-func _on_next_turn() -> void:
-	_process_resource_production()
-	_process_building_production()
+	field.building_finished.connect(_on_building_finished)
 
 func setup():
-	Turn.next_turn.connect(_on_next_turn)
 	resources_updated.emit(town_resources)
 	production_updated.emit(current_production)
+
+func _on_building_finished(field: Field) -> void:
+	var in_progress_building = field.in_progress_building
+	if in_progress_building:
+		var production_increase = in_progress_building.production_rate - field.building.production_rate if field.building else in_progress_building.production_rate
+		var upkeep_increase = in_progress_building.upkeep_cost - field.building.upkeep_cost if field.building else in_progress_building.upkeep_cost
+		in_progress_building.resource_produced.connect(_on_building_resource_produced)
+		current_production[in_progress_building.produced_resource] += production_increase
+		current_production[Enums.TownResource.GOLD] -= upkeep_increase
+		field.building = in_progress_building
+		field.in_progress_building = null
+		production_updated.emit(current_production)
+		field.building_finished.disconnect(_on_building_finished)
+	else:
+		print("No in_progress_building in progress to finish at field: ", field.grid_position)
+
+func _on_building_resource_produced(resource: Enums.TownResource, amount: int) -> void:
+	town_resources[resource] = clamp(
+		town_resources[resource] + amount,
+		0.0,
+		max_capacity
+	)
+	resources_updated.emit(town_resources)

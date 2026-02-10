@@ -8,7 +8,7 @@ func _ready() -> void:
 		push_error("BuildHandler requires a reference to FieldGrid.")
 	if not production_handler:
 		push_error("BuildHandler requires a reference to ProductionHandler.")
-	
+
 func highlight_buildable_fields(building: Building) -> void:
 	if not field_grid or not building:
 		return
@@ -39,12 +39,10 @@ func _can_build_on_field(field: Field, building: Building) -> bool:
 
 func build_on_field(field: Field, building: Building) -> void:
 	if _can_build_on_field(field, building):
-		print("Buildable ", field.grid_position)
 		if not production_handler.can_afford(building.build_cost):
 			print("Cannot afford to build ", building.name)
 			return
-		field.building = building
 		clear_highlights()
-		production_handler.start_production(field.building, field)
+		production_handler.start_production(building, field)
 	else:
 		print("Cannot build ", building.name, " on field at ", field.grid_position)
