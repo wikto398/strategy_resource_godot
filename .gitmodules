@@ -1,9 +1,6 @@
-[submodule "strategy_resource_rl"]
-	path = strategy_resource_rl
-	url = https://github.com/wikto398/strategy_resource_rl
 [submodule "rl_tools"]
 	path = rl_tools
-	url = https://github.com/wikto398/rl_tools
+	url = git@github.com:wikto398/rl_tools.git
 [submodule "godot_tools"]
 	path = godot_tools
-	url = https://github.com/wikto398/godot_tools
+	url = git@github.com:wikto398/godot_tools.git

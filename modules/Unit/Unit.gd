@@ -19,3 +19,4 @@ var target_position: Field = null:
 
 func _ready() -> void:
 	z_index = 100
+	state_machine.setup(Turn.next_turn)
