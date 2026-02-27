@@ -24,14 +24,18 @@ func _field_selected(field: Field) -> void:
 		build_handler.build_on_field(field, selected)
 	elif selected is Builder:
 		builder_controller.move_builder_towards(selected, field.grid_position)
-		selected = null
 	else:
 		print("Showing field info for field at ", field.grid_position)
+		return
+
+	selected = null
+	builder_controller.enable_input_on_builders()
 
 func _building_selected(building: Building) -> void:
 	print("ActionHandler: Building selected: ", building.name)
 	selected = building
 	build_handler.highlight_buildable_fields(selected)
+	builder_controller.disable_input_on_builders()
 
 func _builder_selected(builder: Builder) -> void:
 	print("ActionHandler: Builder selected: ", builder.name)

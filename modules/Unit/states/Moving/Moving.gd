@@ -12,7 +12,7 @@ func update(_delta: float, _user: Node) -> void:
 	if not current_path:
 		a_star(_user.field, _user.target_position)
 
-	for dummy in range(1 + Builder.move_speed_bonus):
+	for dummy in range(1 + GameModifiers.builder_speed_multiplier):
 		if current_path.size() <= 1:
 			return
 

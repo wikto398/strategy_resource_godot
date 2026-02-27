@@ -1,8 +1,0 @@
-[gd_resource type="Resource" script_class="Building" format=3 uid="uid://bidla53soyq85"]
-
-[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_agw4s"]
-
-[resource]
-script = ExtResource("1_agw4s")
-name = "Town Hall"
-metadata/_custom_type_script = "uid://dn11rowigyswq"

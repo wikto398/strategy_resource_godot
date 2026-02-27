@@ -10,8 +10,16 @@ signal production_updated(current_production: Dictionary[Enums.TownResource, int
 	Enums.TownResource.GOLD: 100
 }
 @export var max_capacity: int = 10000
+@export var max_deficit_duration: int = 10
 
 var current_production: Dictionary[Enums.TownResource, int] = {
+	Enums.TownResource.WOOD: 0,
+	Enums.TownResource.STONE: 0,
+	Enums.TownResource.FOOD: 0,
+	Enums.TownResource.GOLD: 0
+}
+
+var current_deficit_duration: Dictionary[Enums.TownResource, int] = {
 	Enums.TownResource.WOOD: 0,
 	Enums.TownResource.STONE: 0,
 	Enums.TownResource.FOOD: 0,
@@ -37,15 +45,14 @@ func start_production(building: Building, field: Field) -> void:
 func setup():
 	resources_updated.emit(town_resources)
 	production_updated.emit(current_production)
+	Turn.next_turn.connect(_on_next_turn)
 
 func _on_building_finished(field: Field) -> void:
 	var in_progress_building = field.in_progress_building
 	if in_progress_building:
-		var production_increase = in_progress_building.production_rate - field.building.production_rate if field.building else in_progress_building.production_rate
-		var upkeep_increase = in_progress_building.upkeep_cost - field.building.upkeep_cost if field.building else in_progress_building.upkeep_cost
-		in_progress_building.resource_produced.connect(_on_building_resource_produced)
-		current_production[in_progress_building.produced_resource] += production_increase
-		current_production[Enums.TownResource.GOLD] -= upkeep_increase
+		if in_progress_building is ProductionBuilding:
+			_on_production_building_finished(in_progress_building, field)
+		_update_upkeep_costs(in_progress_building.upkeep_cost)
 		field.building = in_progress_building
 		field.in_progress_building = null
 		production_updated.emit(current_production)
@@ -53,10 +60,29 @@ func _on_building_finished(field: Field) -> void:
 	else:
 		print("No in_progress_building in progress to finish at field: ", field.grid_position)
 
-func _on_building_resource_produced(resource: Enums.TownResource, amount: int) -> void:
-	town_resources[resource] = clamp(
-		town_resources[resource] + amount,
-		0.0,
-		max_capacity
-	)
+func _on_next_turn() -> void:
+	for resource in current_production.keys():
+		town_resources[resource] = min(town_resources[resource] + current_production[resource], max_capacity)
+		_update_current_deficit_duration(resource)
 	resources_updated.emit(town_resources)
+
+func _on_production_building_finished(building: ProductionBuilding, field: Field) -> void:
+	var production_increase = building.production_rate - field.building.production_rate if field.building else building.production_rate
+	current_production[building.produced_resource] += production_increase
+
+func _update_current_deficit_duration(resource: Enums.TownResource) -> void:
+	if town_resources[resource] < 0 and current_production[resource] < 0:
+		print("Resource ", resource, " is in deficit! Current amount: ", town_resources[resource], " Production: ", current_production[resource])
+		current_deficit_duration[resource] += 1
+	else:
+		current_deficit_duration[resource] = 0
+		return
+
+	if current_deficit_duration[resource] >= max_deficit_duration:
+		print("Resource ", resource, " has been in deficit for too long!")
+		Global.game_lost.emit()
+
+func _update_upkeep_costs(upkeep_change: Dictionary[Enums.TownResource, int]) -> void:
+	for resource in upkeep_change.keys():
+		current_production[resource] -= upkeep_change[resource]
+	production_updated.emit(current_production)

@@ -1,4 +1,4 @@
-class_name ResourceIcon extends Icon 
+class_name ResourceIcon extends Icon
 
 @onready var icon_texture: TextureRect = $MarginContainer/HBoxContainer/TextureRect
 @onready var amount_label: Label = $MarginContainer/HBoxContainer/Amount
@@ -40,8 +40,6 @@ func _set_current_production_label() -> void:
 	var str_value = str(current_production)
 	if current_production > 0:
 		str_value = "+" + str_value
-	elif current_production < 0:
-		str_value = "-" + str_value
 	current_production_label.text = str_value
 
 func get_data():

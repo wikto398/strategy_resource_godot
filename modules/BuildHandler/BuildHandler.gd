@@ -26,7 +26,7 @@ func clear_highlights() -> void:
 func _can_build_on_field(field: Field, building: Building) -> bool:
 	if not field.walkable:
 		return false
-	if field.building:
+	if field.building or field.in_progress_building:
 		return false
 	if building.required_terrain != Terrain.TerrainType.ALL and field.terrain_type != building.required_terrain:
 		return false
@@ -35,7 +35,13 @@ func _can_build_on_field(field: Field, building: Building) -> bool:
 	for neighbor in neighbors:
 		if neighbor.terrain_type in required_terrain:
 			required_terrain.erase(neighbor.terrain_type)
-	return required_terrain.size() == 0
+	var required_buildings: Array[String] = []
+	for req_building in building.required_nearby_buildings:
+		required_buildings.append(req_building.name)
+	for neighbor in neighbors:
+		if neighbor.building and neighbor.building.name in required_buildings:
+			required_buildings.erase(neighbor.building.name)
+	return required_terrain.size() == 0 and required_buildings.size() == 0
 
 func build_on_field(field: Field, building: Building) -> void:
 	if _can_build_on_field(field, building):
@@ -43,6 +49,7 @@ func build_on_field(field: Field, building: Building) -> void:
 			print("Cannot afford to build ", building.name)
 			return
 		clear_highlights()
-		production_handler.start_production(building, field)
+		var building_copy = building.duplicate() as Building
+		production_handler.start_production(building_copy, field)
 	else:
 		print("Cannot build ", building.name, " on field at ", field.grid_position)

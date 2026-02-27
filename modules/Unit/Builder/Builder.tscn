@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dtum8abd3yjts" path="res://modules/Unit/Builder/Builder.gd" id="1_n7cvv"]
 [ext_resource type="Texture2D" uid="uid://ikoviu31rtcu" path="res://assets/units/builder.png" id="2_81q6a"]
-[ext_resource type="Script" uid="uid://c8rndarvfwj2u" path="res://godot_tools/StateMachine/StateMachine.gd" id="3_k16uc"]
+[ext_resource type="Script" uid="uid://dbbvokkta3t2v" path="res://godot_tools/StateMachine/StateMachine.gd" id="3_k16uc"]
 [ext_resource type="Script" uid="uid://cekn048krc6wi" path="res://modules/Unit/states/Idle/Idle.gd" id="4_q1cj1"]
 [ext_resource type="Script" uid="uid://blnwvsaifo7uo" path="res://modules/Unit/states/Moving/Moving.gd" id="5_w15ki"]
 [ext_resource type="Script" uid="uid://17bfiqsmsjtn" path="res://modules/Unit/states/BuildingState/BuildingState.gd" id="6_af05w"]
@@ -28,8 +28,6 @@ debug_color = Color(0.60987985, 0.53951544, 0, 0.41960785)
 [node name="StateMachine" type="Node" parent="." unique_id=894926679 node_paths=PackedStringArray("current_state")]
 script = ExtResource("3_k16uc")
 current_state = NodePath("Idle")
-mode = 1
-metadata/_custom_type_script = "uid://c8rndarvfwj2u"
 
 [node name="Idle" type="Node" parent="StateMachine" unique_id=1391139371]
 script = ExtResource("4_q1cj1")

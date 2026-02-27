@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://b78ct0ym6o6bj"]
+
+[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_n0lty"]
+[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_rqgb7"]
+[ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="2_n0lty"]
+[ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/production/wood/Sawmill.tres" id="3_ktgjw"]
+
+[resource]
+script = ExtResource("2_n0lty")
+produced_resource = 3
+production_rate = 6
+name = "Timber Yard"
+icon = ExtResource("1_n0lty")
+upkeep_cost = Dictionary[int, int]({
+0: 4,
+1: 0,
+2: 0,
+3: 0
+})
+build_cost = Dictionary[int, int]({
+0: 50,
+1: 10,
+2: 20,
+3: 30
+})
+build_time = 12
+required_terrain = 0
+required_nearby_buildings = Array[ExtResource("1_rqgb7")]([ExtResource("3_ktgjw")])
+metadata/_custom_type_script = "uid://uegajtghb2hu"

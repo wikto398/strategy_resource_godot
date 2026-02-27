@@ -81,3 +81,13 @@ func move_builder_towards(builder: Builder, target_pos: Vector2i) -> void:
 
 func _on_builder_clicked(builder: Builder) -> void:
 	builder_selected.emit(builder)
+
+func disable_input_on_builders() -> void:
+	print("Disabling input on builders...")
+	for builder in builders:
+		builder.process_mode = Node.PROCESS_MODE_DISABLED
+
+func enable_input_on_builders() -> void:
+	print("Enabling input on builders...")
+	for builder in builders:
+		builder.process_mode = Node.PROCESS_MODE_INHERIT

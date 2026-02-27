@@ -18,6 +18,7 @@ func _ready() -> void:
 	_setup_builder_controller()
 	_setup_action_handler()
 	_setup_production_handler()
+	_connect_game_result_signals()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
@@ -51,3 +52,13 @@ func _setup_action_handler() -> void:
 
 func _setup_production_handler() -> void:
 	production_handler.setup()
+
+func _connect_game_result_signals() -> void:
+	Global.game_won.connect(_on_game_won)
+	Global.game_lost.connect(_on_game_lost)
+
+func _on_game_won() -> void:
+	print("Congratulations! You've won the game!")
+
+func _on_game_lost() -> void:
+	print("Game Over! You've lost the game.")

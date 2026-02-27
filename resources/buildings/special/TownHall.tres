@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SpecialBuilding" format=3 uid="uid://dp7oolwvrxuck"]
+
+[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_gamm8"]
+[ext_resource type="Script" uid="uid://bidslecsj6i8p" path="res://modules/Building/SpecialBuilding/SpecialBuilding.gd" id="2_criio"]
+[ext_resource type="Script" uid="uid://c2l5tqqs2y3iu" path="res://modules/Special/Special.gd" id="3_y2xll"]
+[ext_resource type="Script" uid="uid://dbaqfsmn38e5s" path="res://modules/Special/WinConditionSpecial/WinConditionSpecial.gd" id="4_criio"]
+
+[sub_resource type="Resource" id="Resource_y2xll"]
+script = ExtResource("4_criio")
+metadata/_custom_type_script = "uid://dbaqfsmn38e5s"
+
+[resource]
+script = ExtResource("2_criio")
+specials = Array[ExtResource("3_y2xll")]([SubResource("Resource_y2xll")])
+unique = true
+metadata/_custom_type_script = "uid://bidslecsj6i8p"

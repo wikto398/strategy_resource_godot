@@ -1,19 +1,28 @@
-[gd_resource type="Resource" script_class="Building" format=3 uid="uid://bi30hqqyuhghq"]
+[gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://bi30hqqyuhghq"]
 
-[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_50q30"]
+[ext_resource type="Texture2D" uid="uid://dhvnwwhl8t0y0" path="res://icon.svg" id="1_qa0xw"]
 [ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_tcwoo"]
+[ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_nxvbs"]
 
 [resource]
-script = ExtResource("1_tcwoo")
-icon = ExtResource("1_50q30")
+script = ExtResource("3_nxvbs")
 produced_resource = 1
 production_rate = 5
-build_cost = Dictionary[int, int]({
-0: 30,
+name = "Mine"
+icon = ExtResource("1_qa0xw")
+upkeep_cost = Dictionary[int, int]({
+0: 0,
 1: 0,
-2: 40,
-3: 30
+2: 0,
+3: 3
 })
+build_cost = Dictionary[int, int]({
+0: 40,
+1: 0,
+2: 10,
+3: 20
+})
+build_time = 15
 required_terrain = 0
 required_nearby_terrain = Array[int]([3])
 metadata/_custom_type_script = "uid://dn11rowigyswq"

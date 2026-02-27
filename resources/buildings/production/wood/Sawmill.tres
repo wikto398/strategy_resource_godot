@@ -1,19 +1,26 @@
-[gd_resource type="Resource" script_class="Building" format=3 uid="uid://b8pdwkckajd6n"]
+[gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://b8pdwkckajd6n"]
 
 [ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_ar3t5"]
 [ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_u6dyh"]
+[ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_6gipb"]
 
 [resource]
-script = ExtResource("1_u6dyh")
+script = ExtResource("3_6gipb")
+production_rate = 5
 name = "Sawmill"
 icon = ExtResource("1_ar3t5")
-production_rate = 5
+upkeep_cost = Dictionary[int, int]({
+0: 0,
+1: 0,
+2: 0,
+3: 5
+})
 build_cost = Dictionary[int, int]({
 0: 0,
-1: 50,
-2: 30,
-3: 20
+1: 30,
+2: 20,
+3: 30
 })
-build_time = 15.0
+build_time = 10
 required_nearby_terrain = Array[int]([2])
 metadata/_custom_type_script = "uid://dn11rowigyswq"

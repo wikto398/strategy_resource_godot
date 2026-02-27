@@ -98,5 +98,4 @@ func finish_building() -> void:
 		print("No building in progress to finish at field: ", grid_position)
 
 func _on_next_turn() -> void:
-	if building:
-		building.produce_resource()
+	pass
