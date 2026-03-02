@@ -36,11 +36,14 @@ func start_production(building: Building, field: Field) -> void:
 	print("Starting production of building: ", building.name)
 	for resource in building.build_cost.keys():
 		town_resources[resource] -= building.build_cost[resource]
+	building.building_started(field)
 	field.in_progress_building = building
-	if field.unit is Builder:
-		field.unit.state_machine.change_state("building")
 	resources_updated.emit(town_resources)
 	field.building_finished.connect(_on_building_finished)
+	if building.build_time == 0:
+		field.finish_building()
+	elif field.unit is Builder:
+		field.unit.state_machine.change_state("building")
 
 func setup():
 	resources_updated.emit(town_resources)

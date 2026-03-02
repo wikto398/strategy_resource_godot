@@ -1,9 +1,34 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://b78ct0ym6o6bj"]
 
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_kp00f"]
 [ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_n0lty"]
-[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_rqgb7"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="2_n0lty"]
+[ext_resource type="Script" uid="uid://ddts8j2vij1ne" path="res://modules/Building/conditions/RequiredBuildingCondition/RequiredBuildingCondition.gd" id="3_crsrj"]
 [ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/production/wood/Sawmill.tres" id="3_ktgjw"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="4_s3axb"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="5_1ebb4"]
+
+[sub_resource type="Resource" id="Resource_0pppd"]
+script = ExtResource("3_crsrj")
+required_building = ExtResource("3_ktgjw")
+metadata/_custom_type_script = "uid://ddts8j2vij1ne"
+
+[sub_resource type="Resource" id="Resource_wx1wc"]
+script = ExtResource("4_s3axb")
+conditions = Array[ExtResource("1_kp00f")]([SubResource("Resource_0pppd")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[sub_resource type="Resource" id="Resource_kp00f"]
+script = ExtResource("5_1ebb4")
+required_terrain = 1
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_crsrj"]
+script = ExtResource("5_1ebb4")
+required_terrain = 2
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 
 [resource]
 script = ExtResource("2_n0lty")
@@ -24,6 +49,5 @@ build_cost = Dictionary[int, int]({
 3: 30
 })
 build_time = 12
-required_terrain = 0
-required_nearby_buildings = Array[ExtResource("1_rqgb7")]([ExtResource("3_ktgjw")])
+conditions = Array[ExtResource("1_kp00f")]([SubResource("Resource_wx1wc"), SubResource("Resource_kp00f"), SubResource("Resource_crsrj")])
 metadata/_custom_type_script = "uid://uegajtghb2hu"

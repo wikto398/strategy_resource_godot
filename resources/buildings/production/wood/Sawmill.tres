@@ -1,8 +1,26 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://b8pdwkckajd6n"]
 
 [ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_ar3t5"]
-[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_u6dyh"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_su0va"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_6gipb"]
+[ext_resource type="Script" uid="uid://ds8gsat3raw5r" path="res://modules/Building/conditions/RequiredStructureCondition/RequiredStructureCondition.gd" id="3_csi0q"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="4_7ke2n"]
+[ext_resource type="Resource" uid="uid://blywijfwevowq" path="res://resources/structures/Forest.tres" id="4_su0va"]
+[ext_resource type="Script" uid="uid://d3xkl3ulov86m" path="res://godot_tools/Condition/ANDCondition/ANDCondition.gd" id="5_m33ni"]
+
+[sub_resource type="Resource" id="Resource_tnjtn"]
+script = ExtResource("3_csi0q")
+required_structure = ExtResource("4_su0va")
+metadata/_custom_type_script = "uid://ds8gsat3raw5r"
+
+[sub_resource type="Resource" id="Resource_6ji4l"]
+script = ExtResource("4_7ke2n")
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_f7jaa"]
+script = ExtResource("5_m33ni")
+conditions = Array[ExtResource("1_su0va")]([SubResource("Resource_tnjtn"), SubResource("Resource_6ji4l")])
+metadata/_custom_type_script = "uid://d3xkl3ulov86m"
 
 [resource]
 script = ExtResource("3_6gipb")
@@ -22,5 +40,5 @@ build_cost = Dictionary[int, int]({
 3: 30
 })
 build_time = 10
-required_nearby_terrain = Array[int]([2])
+conditions = Array[ExtResource("1_su0va")]([SubResource("Resource_f7jaa")])
 metadata/_custom_type_script = "uid://dn11rowigyswq"

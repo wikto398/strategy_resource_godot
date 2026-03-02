@@ -2,6 +2,8 @@ class_name MainGame extends Node2D
 
 var BUILDER_SCENE = preload("uid://vgsn6mcridso")
 
+@export var city_center: CityCenter
+
 @onready var field_grid: FieldGrid = $FieldGrid
 @onready var build_handler: BuildHandler = $BuildHandler
 @onready var builder_controller: BuilderController = $BuilderController
@@ -15,10 +17,11 @@ var BUILDER_SCENE = preload("uid://vgsn6mcridso")
 func _ready() -> void:
 	camera.global_position = get_viewport().size * 0.5
 	_connect_ui_signals()
-	_setup_builder_controller()
+	# _setup_builder_controller()
 	_setup_action_handler()
 	_setup_production_handler()
 	_connect_game_result_signals()
+	_select_city_center_location()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
@@ -38,11 +41,12 @@ func _connect_ui_signals() -> void:
 	production_handler.resources_updated.connect(production_ui._on_update_resources)
 	production_handler.production_updated.connect(production_ui._on_update_production)
 
-func _setup_builder_controller() -> void:
+func _setup_builder_controller(field: Field) -> void:
 	builder_controller.field_grid = field_grid
+	var neareast_walkable_fields = field_grid.get_nearest_walkable_fields(field.grid_position, 3)
 	for i in range(3):
 		var builder = BUILDER_SCENE.instantiate() as Builder
-		builder.field = field_grid.get_field_at(Vector2i(i * 2, i))
+		builder.field = neareast_walkable_fields[i]
 		units_node.add_child(builder)
 		print("Added builder at position: ", builder.field.grid_position, " with global position: ", builder.global_position)
 		builder_controller.add_builder(builder)
@@ -62,3 +66,9 @@ func _on_game_won() -> void:
 
 func _on_game_lost() -> void:
 	print("Game Over! You've lost the game.")
+
+func _select_city_center_location() -> void:
+	action_handler._building_selected(city_center)
+	var field = await city_center.city_center_built
+	print("City Center has been built! You can now build additional structures and expand your town.")
+	_setup_builder_controller(field)

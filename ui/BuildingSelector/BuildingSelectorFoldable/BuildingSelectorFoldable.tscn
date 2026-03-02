@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dun78qcsq3e74"]
+
+[ext_resource type="FoldableGroup" uid="uid://emljq387gpa5" path="res://ui/BuildingSelector/BuildingFoldableGroup.tres" id="1_6a4p4"]
+[ext_resource type="Script" uid="uid://ck0givacjr0o4" path="res://ui/BuildingSelector/BuildingSelectorFoldable/BuildingSelectorFoldable.gd" id="2_vl3yg"]
+
+[node name="BuildingSelectorFoldable" type="FoldableContainer" unique_id=276229197]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+folded = true
+title_position = 1
+foldable_group = ExtResource("1_6a4p4")
+script = ExtResource("2_vl3yg")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1298099415]
+visible = false
+layout_mode = 2

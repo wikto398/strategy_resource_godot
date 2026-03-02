@@ -33,6 +33,9 @@ func _field_selected(field: Field) -> void:
 
 func _building_selected(building: Building) -> void:
 	print("ActionHandler: Building selected: ", building.name)
+	if not production_handler.can_afford(building.build_cost):
+		print("Cannot afford to build ", building.name)
+		return
 	selected = building
 	build_handler.highlight_buildable_fields(selected)
 	builder_controller.disable_input_on_builders()

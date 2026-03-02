@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="HousingBuilding" format=3 uid="uid://cbai8yhrjcvml"]
+
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_dk0ff"]
+[ext_resource type="Texture2D" uid="uid://c4ca0wni6ml05" path="res://assets/buildings/housing.png" id="2_64ocr"]
+[ext_resource type="Script" uid="uid://cmyrq5gwx7l1r" path="res://modules/Building/Housing/HousingBuilding.gd" id="2_xk2ce"]
+
+[resource]
+script = ExtResource("2_xk2ce")
+name = "Housing"
+icon = ExtResource("2_64ocr")
+metadata/_custom_type_script = "uid://cmyrq5gwx7l1r"

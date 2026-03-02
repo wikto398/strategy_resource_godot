@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="Bridge" format=3 uid="uid://cff8m84v456mq"]
+
+[ext_resource type="Texture2D" uid="uid://hm8j8y48kxyc" path="res://assets/buildings/bridge.png" id="1_1166s"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_kgchh"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="2_d1rsj"]
+[ext_resource type="Script" uid="uid://ddts8j2vij1ne" path="res://modules/Building/conditions/RequiredBuildingCondition/RequiredBuildingCondition.gd" id="3_bg5wd"]
+[ext_resource type="Script" uid="uid://yfkmf7ovjx3x" path="res://modules/Building/Bridge/Bridge.gd" id="3_i35hv"]
+[ext_resource type="Script" uid="uid://bjl0sdsby1is3" path="res://godot_tools/Condition/ORCondition/ORCondition.gd" id="4_vb8iy"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="5_7rcg1"]
+
+[sub_resource type="Resource" id="Resource_kgchh"]
+script = ExtResource("2_d1rsj")
+required_terrain = 1
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_d1rsj"]
+script = ExtResource("3_bg5wd")
+required_building_by_name = "bridge"
+metadata/_custom_type_script = "uid://ddts8j2vij1ne"
+
+[sub_resource type="Resource" id="Resource_bg5wd"]
+script = ExtResource("2_d1rsj")
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_vb8iy"]
+script = ExtResource("4_vb8iy")
+conditions = Array[ExtResource("1_kgchh")]([SubResource("Resource_d1rsj"), SubResource("Resource_bg5wd")])
+metadata/_custom_type_script = "uid://bjl0sdsby1is3"
+
+[sub_resource type="Resource" id="Resource_7rcg1"]
+script = ExtResource("5_7rcg1")
+conditions = Array[ExtResource("1_kgchh")]([SubResource("Resource_vb8iy")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[resource]
+script = ExtResource("3_i35hv")
+name = "Bridge"
+icon = ExtResource("1_1166s")
+upkeep_cost = Dictionary[int, int]({
+0: 10,
+1: 0,
+2: 0,
+3: 5
+})
+build_cost = Dictionary[int, int]({
+0: 20,
+1: 10,
+2: 5,
+3: 10
+})
+build_time = 10
+conditions = Array[ExtResource("1_kgchh")]([SubResource("Resource_kgchh"), SubResource("Resource_7rcg1")])
+metadata/_custom_type_script = "uid://yfkmf7ovjx3x"

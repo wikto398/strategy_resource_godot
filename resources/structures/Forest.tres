@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Structure" format=3 uid="uid://blywijfwevowq"]
+
+[ext_resource type="Script" uid="uid://o3vlvo5cr240" path="res://modules/Structure/Structure.gd" id="1_ar857"]
+[ext_resource type="Texture2D" uid="uid://oyytlo5iykwc" path="res://assets/structure/structures/forest/forest_1.png" id="1_ptmuw"]
+
+[resource]
+script = ExtResource("1_ar857")
+name = "Forest"
+icon = ExtResource("1_ptmuw")
+field_types = Array[int]([0])
+metadata/_custom_type_script = "uid://o3vlvo5cr240"

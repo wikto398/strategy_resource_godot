@@ -1,0 +1,70 @@
+[gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://bv2jtfore85bm"]
+
+[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_frsfv"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_itncx"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="2_frsfv"]
+[ext_resource type="Resource" uid="uid://bi30hqqyuhghq" path="res://resources/buildings/production/stone/Mine.tres" id="2_vx4au"]
+[ext_resource type="Script" uid="uid://ddts8j2vij1ne" path="res://modules/Building/conditions/RequiredBuildingCondition/RequiredBuildingCondition.gd" id="3_a20ak"]
+[ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_frsfv"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="4_3r5wf"]
+
+[sub_resource type="Resource" id="Resource_lv0tl"]
+script = ExtResource("4_3r5wf")
+required_terrain = 2
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_7tw0v"]
+script = ExtResource("4_3r5wf")
+required_terrain = 1
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_vx4au"]
+script = ExtResource("3_a20ak")
+required_building = ExtResource("2_vx4au")
+metadata/_custom_type_script = "uid://ddts8j2vij1ne"
+
+[sub_resource type="Resource" id="Resource_a20ak"]
+script = ExtResource("2_frsfv")
+conditions = Array[ExtResource("1_itncx")]([SubResource("Resource_vx4au")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[sub_resource type="Resource" id="Resource_mx4re"]
+script = ExtResource("2_frsfv")
+conditions = Array[ExtResource("1_itncx")]([SubResource("Resource_lv0tl"), SubResource("Resource_7tw0v"), SubResource("Resource_a20ak")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[sub_resource type="Resource" id="Resource_3r5wf"]
+script = ExtResource("4_3r5wf")
+required_terrain = 1
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_bfel1"]
+script = ExtResource("4_3r5wf")
+required_terrain = 2
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[resource]
+script = ExtResource("3_frsfv")
+produced_resource = 3
+production_rate = 5
+name = "Stone Works"
+icon = ExtResource("1_frsfv")
+upkeep_cost = Dictionary[int, int]({
+0: 0,
+1: 0,
+2: 0,
+3: 5
+})
+build_cost = Dictionary[int, int]({
+0: 30,
+1: 50,
+2: 30,
+3: 30
+})
+build_time = 18
+conditions = Array[ExtResource("1_itncx")]([SubResource("Resource_mx4re"), SubResource("Resource_3r5wf"), SubResource("Resource_bfel1")])
+metadata/_custom_type_script = "uid://uegajtghb2hu"

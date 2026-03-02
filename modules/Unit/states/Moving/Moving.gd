@@ -12,7 +12,7 @@ func update(_delta: float, _user: Node) -> void:
 	if not current_path:
 		a_star(_user.field, _user.target_position)
 
-	for dummy in range(1 + GameModifiers.builder_speed_multiplier):
+	for dummy in range(1 + GameData.builder_speed_multiplier):
 		if current_path.size() <= 1:
 			return
 
@@ -57,7 +57,7 @@ func a_star(start: Field, goal: Field, skip_blocked_by_unit: bool = false) -> vo
 			current_path = reconstruct_path(came_from, current)
 			return
 
-		for neighbor in field_grid.get_neighbors(current.grid_position):
+		for neighbor in field_grid.get_neighbours(current.grid_position):
 			if not neighbor.walkable or (neighbor.unit and (not skip_blocked_by_unit or neighbor.unit != self)):
 				continue
 			var tentative_g_score = g_score[current] + neighbor.movement_cost

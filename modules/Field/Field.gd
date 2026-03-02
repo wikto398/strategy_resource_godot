@@ -11,15 +11,17 @@ signal field_clicked(field: Field)
 signal building_finished(field: Field)
 signal unit_moved_out()
 
+@onready var elements: Node2D = $Elements
+@onready var terrain: Sprite2D = $Elements/Terrain
+@onready var building_texture: Sprite2D = $Elements/Building
+@onready var structure_texture: Sprite2D = $Elements/Structure
+
 var unit: Unit = null:
 	set(value):
 		unit = value
 		if not unit:
 			unit_moved_out.emit()
-
-@onready var elements: Node2D = $Elements
-@onready var terrain: Sprite2D = $Elements/Terrain
-@onready var building_texture: Sprite2D = $Elements/Building
+var continent: int = 0
 
 @export var terrain_type: Terrain.TerrainType = Terrain.TerrainType.GRASS:
 	set(value):
@@ -34,6 +36,7 @@ var unit: Unit = null:
 		if building:
 			building_texture.texture = building.icon
 @export var grid_position: Vector2i = Vector2i.ZERO
+@export var structure: Structure
 
 var movement_cost: int = 1
 var build_bonus: Dictionary[Enums.TownResource, Array] = {}
@@ -56,6 +59,7 @@ func set_buildable(buildable: bool):
 
 func _set_texture():
 	terrain.texture = Terrain.get_texture_for_type(terrain_type)
+	structure_texture.texture = structure.icon if structure else null
 
 func _on_area_2d_mouse_entered() -> void:
 	material = Shaders.load_shader("hovered")
@@ -93,6 +97,7 @@ func _calculate_current_bonus(town_resource: Enums.TownResource) -> void:
 
 func finish_building() -> void:
 	if in_progress_building:
+		in_progress_building.building_finished(self)
 		building_finished.emit(self)
 	else:
 		print("No building in progress to finish at field: ", grid_position)

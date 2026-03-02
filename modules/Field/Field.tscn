@@ -16,6 +16,8 @@ use_parent_material = true
 use_parent_material = true
 texture = ExtResource("2_o06qu")
 
+[node name="Structure" type="Sprite2D" parent="Elements" unique_id=473002717]
+
 [node name="Building" type="Sprite2D" parent="Elements" unique_id=234984237]
 use_parent_material = true
 

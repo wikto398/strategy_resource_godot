@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CityCenter" format=3 uid="uid://cr1yt6lti8707"]
+
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_4v7o6"]
+[ext_resource type="Texture2D" uid="uid://csf1sn5rxqal2" path="res://assets/buildings/city_centerl.png" id="2_0ly4e"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="2_c5oje"]
+[ext_resource type="Script" uid="uid://cf41otxya2crt" path="res://modules/Building/Housing/CityCenter/CityCenter.gd" id="3_utwrq"]
+
+[sub_resource type="Resource" id="Resource_0ly4e"]
+script = ExtResource("2_c5oje")
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[resource]
+script = ExtResource("3_utwrq")
+name = "City Center"
+icon = ExtResource("2_0ly4e")
+upkeep_cost = Dictionary[int, int]({
+0: 2,
+1: 2,
+2: 2,
+3: 2
+})
+build_time = 0
+conditions = Array[ExtResource("1_4v7o6")]([SubResource("Resource_0ly4e")])
+unique = true
+metadata/_custom_type_script = "uid://cmyrq5gwx7l1r"

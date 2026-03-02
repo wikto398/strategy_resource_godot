@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://cqa5qmffn43l3"]
+
+[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_6w0or"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_vqrbe"]
+[ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_6w0or"]
+[ext_resource type="Script" uid="uid://ds8gsat3raw5r" path="res://modules/Building/conditions/RequiredStructureCondition/RequiredStructureCondition.gd" id="3_pejx3"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="4_hhlo7"]
+[ext_resource type="Resource" uid="uid://b0caqrygjkejx" path="res://resources/structures/Lake.tres" id="4_jkltr"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="5_afcms"]
+
+[sub_resource type="Resource" id="Resource_hum71"]
+script = ExtResource("3_pejx3")
+required_structure = ExtResource("4_jkltr")
+metadata/_custom_type_script = "uid://ds8gsat3raw5r"
+
+[sub_resource type="Resource" id="Resource_mnhor"]
+script = ExtResource("4_hhlo7")
+conditions = Array[ExtResource("1_vqrbe")]([SubResource("Resource_hum71")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[sub_resource type="Resource" id="Resource_cbclp"]
+script = ExtResource("5_afcms")
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[resource]
+script = ExtResource("3_6w0or")
+produced_resource = 2
+production_rate = 5
+name = "Farm"
+icon = ExtResource("1_6w0or")
+upkeep_cost = Dictionary[int, int]({
+0: 0,
+1: 0,
+2: 0,
+3: 5
+})
+conditions = Array[ExtResource("1_vqrbe")]([SubResource("Resource_mnhor"), SubResource("Resource_cbclp")])
+metadata/_custom_type_script = "uid://uegajtghb2hu"

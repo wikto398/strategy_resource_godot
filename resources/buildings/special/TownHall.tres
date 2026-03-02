@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_gamm8"]
 [ext_resource type="Script" uid="uid://bidslecsj6i8p" path="res://modules/Building/SpecialBuilding/SpecialBuilding.gd" id="2_criio"]
+[ext_resource type="Script" uid="uid://o3vlvo5cr240" path="res://modules/Structure/Structure.gd" id="2_y2xll"]
 [ext_resource type="Script" uid="uid://c2l5tqqs2y3iu" path="res://modules/Special/Special.gd" id="3_y2xll"]
 [ext_resource type="Script" uid="uid://dbaqfsmn38e5s" path="res://modules/Special/WinConditionSpecial/WinConditionSpecial.gd" id="4_criio"]
 

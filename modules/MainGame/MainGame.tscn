@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://d3ifaj17vcjw5"]
 
 [ext_resource type="Script" uid="uid://cct3buqlif13s" path="res://modules/MainGame/MainGame.gd" id="1_1cjsp"]
+[ext_resource type="Resource" uid="uid://cr1yt6lti8707" path="res://resources/buildings/housing/CityCenter.tres" id="2_5y0dg"]
 [ext_resource type="PackedScene" uid="uid://cv6ordwtq1xd" path="res://modules/FieldGrid/FieldGrid.tscn" id="2_k75fg"]
 [ext_resource type="Script" uid="uid://2ia1jf1orr1b" path="res://modules/BuildHandler/BuildHandler.gd" id="3_sek8c"]
 [ext_resource type="PackedScene" uid="uid://nbxeg3jhhghn" path="res://ui/ProductionUI/ProductionUI.tscn" id="3_sre2q"]
@@ -12,6 +13,7 @@
 
 [node name="MainGame" type="Node2D" unique_id=1044607965]
 script = ExtResource("1_1cjsp")
+city_center = ExtResource("2_5y0dg")
 
 [node name="FieldGrid" parent="." unique_id=1706481387 instance=ExtResource("2_k75fg")]
 

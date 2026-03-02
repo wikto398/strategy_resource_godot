@@ -1,7 +1,6 @@
 class_name Terrain
 
 enum TerrainType {
-	ALL,
 	GRASS,
 	WATER,
 	MOUNTAIN,

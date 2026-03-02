@@ -1,8 +1,43 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://bi30hqqyuhghq"]
 
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_ctqnk"]
 [ext_resource type="Texture2D" uid="uid://dhvnwwhl8t0y0" path="res://icon.svg" id="1_qa0xw"]
-[ext_resource type="Script" uid="uid://dn11rowigyswq" path="res://modules/Building/Building.gd" id="1_tcwoo"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="2_o1ta5"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="3_66tw7"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_nxvbs"]
+[ext_resource type="Script" uid="uid://d3xkl3ulov86m" path="res://godot_tools/Condition/ANDCondition/ANDCondition.gd" id="4_brxyi"]
+
+[sub_resource type="Resource" id="Resource_imrif"]
+script = ExtResource("2_o1ta5")
+required_terrain = 2
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_yo4nj"]
+script = ExtResource("3_66tw7")
+conditions = Array[ExtResource("1_ctqnk")]([SubResource("Resource_imrif")])
+metadata/_custom_type_script = "uid://dudv08mddwqxr"
+
+[sub_resource type="Resource" id="Resource_ctqnk"]
+script = ExtResource("2_o1ta5")
+required_terrain = 2
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_o1ta5"]
+script = ExtResource("2_o1ta5")
+required_terrain = 1
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_66tw7"]
+script = ExtResource("4_brxyi")
+conditions = Array[ExtResource("1_ctqnk")]([SubResource("Resource_ctqnk"), SubResource("Resource_o1ta5")])
+metadata/_custom_type_script = "uid://d3xkl3ulov86m"
+
+[sub_resource type="Resource" id="Resource_cmqar"]
+script = ExtResource("4_brxyi")
+conditions = Array[ExtResource("1_ctqnk")]([SubResource("Resource_yo4nj"), SubResource("Resource_66tw7")])
+metadata/_custom_type_script = "uid://d3xkl3ulov86m"
 
 [resource]
 script = ExtResource("3_nxvbs")
@@ -23,6 +58,5 @@ build_cost = Dictionary[int, int]({
 3: 20
 })
 build_time = 15
-required_terrain = 0
-required_nearby_terrain = Array[int]([3])
+conditions = Array[ExtResource("1_ctqnk")]([SubResource("Resource_cmqar")])
 metadata/_custom_type_script = "uid://dn11rowigyswq"

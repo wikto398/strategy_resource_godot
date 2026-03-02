@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Structure" format=3 uid="uid://b0caqrygjkejx"]
+
+[ext_resource type="Texture2D" uid="uid://c4p5by8xmryw3" path="res://assets/structure/structures/lake/lake_1.png" id="1_fo2ki"]
+[ext_resource type="Script" uid="uid://o3vlvo5cr240" path="res://modules/Structure/Structure.gd" id="1_kaii5"]
+
+[resource]
+script = ExtResource("1_kaii5")
+name = "Lake"
+icon = ExtResource("1_fo2ki")
+field_types = Array[int]([0, 3])
+metadata/_custom_type_script = "uid://o3vlvo5cr240"

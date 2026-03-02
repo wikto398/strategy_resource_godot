@@ -4,6 +4,7 @@ extends Node2D
 const PROBABILITY_WATER_TO_GRASS = [1, 3]
 const PROBABILITY_BORDER_GRASS = [1, 4, 2]
 const PROBABILITY_INNER_GRASS = [1, 6, 3]
+const STRUCTURE_PLACEMENT_PROBABILITY = 0.4
 
 signal unhighlight_all_fields
 signal update_visuals()
@@ -26,6 +27,7 @@ func _ready():
 	generate_ca_map(3)
 	_set_boundary_fields()
 	_fill_island_with_terrain()
+	_add_structures()
 	update_visuals.emit()
 	_center()
 
@@ -82,7 +84,7 @@ const ODD_R_DIRECTIONS := [
 	Vector2i(0, 1),   Vector2i(1, 1),
 ]
 
-func get_neighbors(v: Vector2i) -> Array[Field]:
+func get_neighbours(v: Vector2i) -> Array[Field]:
 	var result: Array[Field] = []
 	var directions = EVEN_R_DIRECTIONS if (v.y & 1) == 0 else ODD_R_DIRECTIONS
 	for d in directions:
@@ -121,7 +123,7 @@ func _run_ca_step():
 
 	for coords in fields:
 		var grass_neighbors = 0
-		var neighbors = get_neighbors(coords)
+		var neighbors = get_neighbours(coords)
 
 		for n in neighbors:
 			if n.terrain_type == Terrain.TerrainType.GRASS:
@@ -144,7 +146,7 @@ func _fill_island_with_terrain():
 		var field = fields[coords]
 		is_border = false
 		if field.terrain_type == Terrain.TerrainType.GRASS:
-			var neighbors = get_neighbors(coords)
+			var neighbors = get_neighbours(coords)
 			for n in neighbors:
 				if n.terrain_type == Terrain.TerrainType.WATER:
 					is_border = true
@@ -162,5 +164,43 @@ func _fill_island_with_terrain():
 	for non_border_field in non_borders:
 		non_border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_INNER_GRASS)]
 
-func _calculate_field_bonuses():
-	pass
+func _add_structures():
+	var grouped_structures = _group_structures_by_terrain(ResourceDatabase.load_structures())
+	print("Grouped structures by terrain: ", grouped_structures)
+	for coords in fields:
+		var field = fields[coords]
+		if field.terrain_type in grouped_structures and randf() < STRUCTURE_PLACEMENT_PROBABILITY:
+			var possible_structures = grouped_structures[field.terrain_type]
+			field.structure = possible_structures[randi() % possible_structures.size()]
+
+func _group_structures_by_terrain(structures: Array[Structure]) -> Dictionary[Terrain.TerrainType, Array]:
+	var grouped: Dictionary[Terrain.TerrainType, Array] = {}
+	for structure in structures:
+		for terrain_type in structure.field_types:
+			if not grouped.has(terrain_type):
+				grouped[terrain_type] = []
+			grouped[terrain_type].append(structure)
+	return grouped
+
+func get_nearest_walkable_fields(start: Vector2i, amount: int) -> Array[Field]:
+	var result: Array[Field] = []
+	var visited: Dictionary[Vector2i, bool] = {}
+	var queue: Array[Vector2i] = [start]
+	var distance: Dictionary[Vector2i, int] = {start: 0}
+	var max_distance: int = 10
+
+	while queue.size() > 0 and result.size() < amount:
+		var current = queue.pop_front()
+		if distance[current] > max_distance:
+			continue
+
+		if fields[current].walkable:
+			result.append(fields[current])
+
+		for neighbor in get_neighbours(current):
+			if not visited.has(neighbor.grid_position):
+				visited[neighbor.grid_position] = true
+				queue.append(neighbor.grid_position)
+				distance[neighbor.grid_position] = distance[current] + 1
+
+	return result
