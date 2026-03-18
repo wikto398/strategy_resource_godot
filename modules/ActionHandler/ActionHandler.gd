@@ -25,29 +25,29 @@ func _field_selected(field: Field) -> void:
 	elif selected is Builder:
 		builder_controller.move_builder_towards(selected, field.grid_position)
 	else:
-		print("Showing field info for field at ", field.grid_position)
+		DebugLogger.trace("Showing field info for field at " + str(field.grid_position))
 		return
 
 	selected = null
 	builder_controller.enable_input_on_builders()
 
 func _building_selected(building: Building) -> void:
-	print("ActionHandler: Building selected: ", building.name)
+	DebugLogger.debug("ActionHandler: Building selected: " + building.name)
 	if not production_handler.can_afford(building.build_cost):
-		print("Cannot afford to build ", building.name)
+		DebugLogger.warning("Cannot afford to build " + building.name)
 		return
 	selected = building
 	build_handler.highlight_buildable_fields(selected)
 	builder_controller.disable_input_on_builders()
 
 func _builder_selected(builder: Builder) -> void:
-	print("ActionHandler: Builder selected: ", builder.name)
+	DebugLogger.debug("ActionHandler: Builder selected: " + builder.name)
 	selected = builder
 	build_handler.clear_highlights()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			print("Right click detected, clearing highlights and selection.")
+			DebugLogger.trace("Right click detected, clearing highlights and selection.")
 			build_handler.clear_highlights()
 			selected = null

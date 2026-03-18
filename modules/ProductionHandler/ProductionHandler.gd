@@ -33,7 +33,7 @@ func can_afford(cost: Dictionary[Enums.TownResource, int]) -> bool:
 	return true
 
 func start_production(building: Building, field: Field) -> void:
-	print("Starting production of building: ", building.name)
+	DebugLogger.debug("Starting production of building: " + building.name)
 	for resource in building.build_cost.keys():
 		town_resources[resource] -= building.build_cost[resource]
 	building.building_started(field)
@@ -61,7 +61,7 @@ func _on_building_finished(field: Field) -> void:
 		production_updated.emit(current_production)
 		field.building_finished.disconnect(_on_building_finished)
 	else:
-		print("No in_progress_building in progress to finish at field: ", field.grid_position)
+		DebugLogger.warning("No in_progress_building in progress to finish at field: " + str(field.grid_position))
 
 func _on_next_turn() -> void:
 	for resource in current_production.keys():
@@ -75,14 +75,14 @@ func _on_production_building_finished(building: ProductionBuilding, field: Field
 
 func _update_current_deficit_duration(resource: Enums.TownResource) -> void:
 	if town_resources[resource] < 0 and current_production[resource] < 0:
-		print("Resource ", resource, " is in deficit! Current amount: ", town_resources[resource], " Production: ", current_production[resource])
+		DebugLogger.warning("Resource " + str(resource) + " is in deficit! Current amount: " + str(town_resources[resource]) + " Production: " + str(current_production[resource]))
 		current_deficit_duration[resource] += 1
 	else:
 		current_deficit_duration[resource] = 0
 		return
 
 	if current_deficit_duration[resource] >= max_deficit_duration:
-		print("Resource ", resource, " has been in deficit for too long!")
+		DebugLogger.error("Resource " + str(resource) + " has been in deficit for too long!")
 		Global.game_lost.emit()
 
 func _update_upkeep_costs(upkeep_change: Dictionary[Enums.TownResource, int]) -> void:

@@ -1,8 +1,9 @@
 class_name HousingBuilding extends Building
 
+@export var population_increase: int = 1
+
 func building_finished(field: Field = null) -> void:
-    print("Housing building finished at ", field.grid_position)
-    GameData.population += 1
+    GameData.population += population_increase
 
 func building_started(field: Field = null) -> void:
     pass

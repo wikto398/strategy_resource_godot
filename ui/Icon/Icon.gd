@@ -1,5 +1,5 @@
 @abstract
-class_name Icon extends PanelContainer 
+class_name Icon extends PanelContainer
 
 signal clicked(data: Resource)
 
@@ -13,5 +13,5 @@ func _ready() -> void:
 func _on_gui_input(event: InputEvent) -> void:
     if event is InputEventMouseButton and event.pressed:
         if event.button_index == MOUSE_BUTTON_LEFT:
-            print("Icon clicked: ", self)
+            DebugLogger.debug("Icon clicked: {icon}".format({icon = self}))
             clicked.emit(data)

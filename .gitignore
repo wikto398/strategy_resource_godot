@@ -4,3 +4,5 @@
 .vscode
 .editorconfig
 .env
+venv
+logs

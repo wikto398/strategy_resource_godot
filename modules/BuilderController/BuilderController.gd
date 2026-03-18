@@ -14,11 +14,11 @@ func add_builder(builder: Builder) -> void:
 
 func print_nearest_builders() -> void:
 	for pos in nearest_builders.keys():
-		print("Position: ", pos, " - Nearest Builder Index: ", nearest_builders[pos], " - Distance: ", nearest_distances[pos])
+		DebugLogger.trace("Position: " + str(pos) + " - Nearest Builder Index: " + str(nearest_builders[pos]) + " - Distance: " + str(nearest_distances[pos]))
 
 func multisource_dijkstra() -> void:
 	if field_grid == null:
-		push_error("Field grid is not assigned in BuilderController.")
+		DebugLogger.error("Field grid is not assigned in BuilderController.")
 		return
 
 	nearest_distances.clear()
@@ -54,24 +54,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_B:
-				print("Calculating nearest builders...")
+				DebugLogger.trace("Calculating nearest builders...")
 				multisource_dijkstra()
 				print_nearest_builders()
 
 func move_builder_towards(builder: Builder, target_pos: Vector2i) -> void:
 	if builder == null:
-		push_error("Builder is null in move_builder_towards.")
+		DebugLogger.error("Builder is null in move_builder_towards.")
 		return
 	if target_pos == null:
-		push_error("Target position is null in move_builder_towards.")
+		DebugLogger.error("Target position is null in move_builder_towards.")
 		return
 	if field_grid == null:
-		push_error("Field grid is not assigned in BuilderController.")
+		DebugLogger.error("Field grid is not assigned in BuilderController.")
 		return
 
 	var target_field = field_grid.get_field_at(target_pos)
 	if target_field == null:
-		push_error("Target field is null for position: " + str(target_pos))
+		DebugLogger.error("Target field is null for position: " + str(target_pos))
 		return
 	builder.target_position = target_field
 	if builder.state_machine.current_state_name != "moving":
@@ -83,11 +83,11 @@ func _on_builder_clicked(builder: Builder) -> void:
 	builder_selected.emit(builder)
 
 func disable_input_on_builders() -> void:
-	print("Disabling input on builders...")
+	DebugLogger.trace("Disabling input on builders...")
 	for builder in builders:
 		builder.process_mode = Node.PROCESS_MODE_DISABLED
 
 func enable_input_on_builders() -> void:
-	print("Enabling input on builders...")
+	DebugLogger.trace("Enabling input on builders...")
 	for builder in builders:
 		builder.process_mode = Node.PROCESS_MODE_INHERIT

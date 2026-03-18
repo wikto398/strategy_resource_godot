@@ -111,7 +111,7 @@ func _center():
 	position = viewport_center - grid_center
 
 func _on_field_clicked(field: Field) -> void:
-	print("Field clicked at position: ", field.grid_position, " with global position: ", field.global_position)
+	DebugLogger.trace("Field clicked at position: " + str(field.grid_position) + " with global position: " + str(field.global_position))
 	field_clicked.emit(field)
 
 func generate_ca_map(iterations: int = 3):
@@ -166,7 +166,7 @@ func _fill_island_with_terrain():
 
 func _add_structures():
 	var grouped_structures = _group_structures_by_terrain(ResourceDatabase.load_structures())
-	print("Grouped structures by terrain: ", grouped_structures)
+	DebugLogger.trace("Grouped structures by terrain: " + str(grouped_structures))
 	for coords in fields:
 		var field = fields[coords]
 		if field.terrain_type in grouped_structures and randf() < STRUCTURE_PLACEMENT_PROBABILITY:
@@ -204,3 +204,9 @@ func get_nearest_walkable_fields(start: Vector2i, amount: int) -> Array[Field]:
 				distance[neighbor.grid_position] = distance[current] + 1
 
 	return result
+
+func observation() -> Array:
+	var obs: Array = []
+	for coords in fields:
+		obs.append(fields[coords].observation())
+	return obs

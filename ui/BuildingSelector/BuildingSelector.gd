@@ -62,7 +62,7 @@ func _add_production_building_to_foldable(building: ProductionBuilding, building
 		foldables_by_town_resources[building.produced_resource].building_container.add_child(building_icon)
 		building_icon.clicked.connect(_on_building_icon_clicked)
 	else:
-		push_error("No foldable found for building's produced resource: " + str(building.produced_resource))
+		DebugLogger.error("No foldable found for building's produced resource: " + str(building.produced_resource))
 
 func _add_special_building_to_foldable(building: Building, building_icon: BuildingIcon) -> void:
 	building_icon.data = building
@@ -74,6 +74,6 @@ func _on_building_removed_from_selector(building: Building) -> void:
 		var icon = icons_by_building[building]
 		icon.queue_free()
 		icons_by_building.erase(building)
-		print("Removed building from selector: " + building.name)
+		DebugLogger.trace("Removed building from selector: " + building.name)
 	else:
-		push_warning("Attempted to remove building from selector, but no icon found for building: " + building.name)
+		DebugLogger.warning("Attempted to remove building from selector, but no icon found for building: " + building.name)

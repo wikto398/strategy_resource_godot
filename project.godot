@@ -17,10 +17,11 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+ArgsParser="*uid://bq3x6gwvh2k2m"
+DebugLogger="*uid://5e6vryw67t8y"
 Enums="*uid://cl25beyu3ts0a"
 Shaders="*uid://bno5e1jm3g10e"
 Icons="*uid://f87pw3ijqnob"
-RlCommunicator="*uid://col72qio4itno"
 Turn="*uid://bvgwnnc28a51r"
 ResourceDatabase="*uid://b56pm2phycwx3"
 GameData="*uid://cd7sijais6nt5"

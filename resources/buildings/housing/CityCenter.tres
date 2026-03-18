@@ -11,6 +11,7 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 
 [resource]
 script = ExtResource("3_utwrq")
+population_increase = 3
 name = "City Center"
 icon = ExtResource("2_0ly4e")
 upkeep_cost = Dictionary[int, int]({

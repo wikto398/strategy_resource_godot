@@ -4,6 +4,8 @@ const BUILDING_PATH = "res://resources/buildings/"
 const STRUCTURE_PATH = "res://resources/structures/"
 
 var buildings: Array[Building] = []
+var int_to_building: Dictionary = {}
+var building_to_int: Dictionary = {}
 var structures: Array[Structure] = []
 
 func load_buildings() -> Array[Building]:
@@ -12,8 +14,11 @@ func load_buildings() -> Array[Building]:
 	for building in _get_all_building_resources_from_path(BUILDING_PATH, true):
 		if building is Building:
 			buildings.append(building)
+			var building_index = buildings.size()
+			building_to_int[building] = building_index
+			int_to_building[building_index] = building
 		else:
-			push_warning("Resource at " + building.resource_path + " is not a Building.")
+			DebugLogger.warning("Resource at " + building.resource_path + " is not a Building.")
 	return buildings
 
 func load_structures() -> Array[Structure]:
@@ -23,7 +28,7 @@ func load_structures() -> Array[Structure]:
 		if structure is Structure:
 			structures.append(structure)
 		else:
-			push_warning("Resource at " + structure.resource_path + " is not a Structure.")
+			DebugLogger.warning("Resource at " + structure.resource_path + " is not a Structure.")
 	return structures
 
 func _get_all_building_resources_from_path(path: String, recursive: bool = false) -> Array[Resource]:
@@ -35,7 +40,7 @@ func _get_all_building_resources_from_path(path: String, recursive: bool = false
 				if resource:
 					resources.append(resource)
 				else:
-					push_error("Failed to load resource: " + path + "/" + file)
+					DebugLogger.error("Failed to load resource: " + path + "/" + file)
 		if recursive:
 			for dir in DirAccess.get_directories_at(path):
 				resources.append_array(_get_all_building_resources_from_path(path + "/" + dir, true))

@@ -26,7 +26,7 @@ func _on_update_resources(town_resources: Dictionary[Enums.TownResource, int]) -
 			resource_icons[resource].amount = int(town_resources[resource])
 
 func _on_update_production(current_production: Dictionary[Enums.TownResource, int]) -> void:
-	print("Updating production UI with current production: ", current_production)
+	DebugLogger.debug("Updating production UI with current production: {production}".format({production = current_production}))
 	for resource in current_production.keys():
 		if resource_icons.has(resource):
 			resource_icons[resource].current_production = current_production[resource]

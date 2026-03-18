@@ -100,7 +100,16 @@ func finish_building() -> void:
 		in_progress_building.building_finished(self)
 		building_finished.emit(self)
 	else:
-		print("No building in progress to finish at field: ", grid_position)
+		DebugLogger.warning("No building in progress to finish at field: " + str(grid_position))
 
 func _on_next_turn() -> void:
 	pass
+
+func observation() -> Array:
+	return [
+		terrain_type,
+		1 if walkable else 0,
+		ResourceDatabase.building_to_int.get(building, 0) if building else 0,
+		1 if structure else 0,
+		1 if unit else 0,
+	]

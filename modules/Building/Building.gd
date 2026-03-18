@@ -25,13 +25,16 @@ signal remove_from_selector(building: Building)
 @export var unique: bool = false
 
 func build() -> bool:
+	if GameData.population <= GameData.working_population:
+		DebugLogger.trace("Not enough free population to continue building " + name)
+		return false
 	if building_progress < build_time:
 		building_progress += 1
-		print("Building {name}: {progress}/{total} progress.".format({name = name, progress = building_progress, total = build_time}))
+		DebugLogger.trace("Building {name}: {progress}/{total} progress.".format({name = name, progress = building_progress, total = build_time}))
 		if building_progress >= build_time:
 			return true
 	else:
-		print("{name} is fully built and operational.".format({name = name}))
+		DebugLogger.trace("{name} is fully built and operational.".format({name = name}))
 	return false
 
 @abstract func building_finished(field: Field = null) -> void

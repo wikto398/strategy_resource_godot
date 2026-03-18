@@ -19,7 +19,7 @@ func update(_delta: float, _user: Node) -> void:
 		var next_field: Field = current_path[1]
 
 		if next_field.unit:
-			print("{builder}: Path blocked at {position} by {blocker}, checking for new path."
+			DebugLogger.debug("{builder}: Path blocked at {position} by {blocker}, checking for new path."
 				.format({
 					builder = _user.name,
 					position = next_field.grid_position,
@@ -29,12 +29,12 @@ func update(_delta: float, _user: Node) -> void:
 			var previous_path = current_path.duplicate()
 			a_star(_user.field, _user.target_position, true)
 			if not current_path:
-				print("{builder}: No alternative path found, waiting for field to become available."
+				DebugLogger.debug("{builder}: No alternative path found, waiting for field to become available."
 					.format({builder = _user.name}))
 				current_path = previous_path
 				next_field = current_path[1]
 
-				print(_user.name, ": Waiting for field to become available.")
+				DebugLogger.debug("{builder}: Waiting for field to become available.".format({builder = _user.name}))
 				await next_field.unit_moved_out
 
 		_move_to(_user, next_field)
@@ -67,7 +67,7 @@ func a_star(start: Field, goal: Field, skip_blocked_by_unit: bool = false) -> vo
 				f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
 				open_set.push(neighbor, f_score[neighbor])
 
-	print("No path found from ", start.grid_position, " to ", goal.grid_position)
+	DebugLogger.debug("No path found from {start} to {goal}".format({start = start.grid_position, goal = goal.grid_position}))
 	current_path = []
 
 func heuristic(a: Field, b: Field) -> int:
@@ -85,10 +85,10 @@ func _move_to(_user: Node, next_field: Field) -> void:
 	current_path.pop_front()
 	if _user.target_position == _user.field:
 		_user.target_position = null
-		print("Unit has reached target position at ", _user.field.grid_position)
+		DebugLogger.debug("Unit has reached target position at {position}".format({position = _user.field.grid_position}))
 		if _user.field.in_progress_building:
-			print("{unit} stopped moving and is now working on building at {field}.".format({unit = _user.name, field = _user.field.grid_position}))
+			DebugLogger.debug("{unit} stopped moving and is now working on building at {field}.".format({unit = _user.name, field = _user.field.grid_position}))
 			change_state.emit("building")
 		else:
-			print("{unit} stopped moving and is now idle.".format({unit = _user.name}))
+			DebugLogger.debug("{unit} stopped moving and is now idle.".format({unit = _user.name}))
 			change_state.emit("idle")

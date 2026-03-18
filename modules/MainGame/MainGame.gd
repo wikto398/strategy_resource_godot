@@ -13,26 +13,27 @@ var BUILDER_SCENE = preload("uid://vgsn6mcridso")
 @onready var building_selector: BuildingSelector = $UI/BuildingSelector
 @onready var camera: Camera2D = $Camera2D
 @onready var units_node: Node2D = $Units
+@onready var ui: CanvasLayer = $UI
 
 func _ready() -> void:
 	camera.global_position = get_viewport().size * 0.5
 	_connect_ui_signals()
-	# _setup_builder_controller()
 	_setup_action_handler()
 	_setup_production_handler()
 	_connect_game_result_signals()
 	_select_city_center_location()
+	_disable_ui_if_headless()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		match event.keycode:
 			KEY_F1:
-				print("Reloading scene...")
+				DebugLogger.info("Reloading scene...")
 				_reload()
 			KEY_F5:
-				print("Saving game...")
+				DebugLogger.info("Saving game...")
 			KEY_F9:
-				print("Loading game...")
+				DebugLogger.info("Loading game...")
 
 func _reload():
 	get_tree().reload_current_scene()
@@ -48,7 +49,7 @@ func _setup_builder_controller(field: Field) -> void:
 		var builder = BUILDER_SCENE.instantiate() as Builder
 		builder.field = neareast_walkable_fields[i]
 		units_node.add_child(builder)
-		print("Added builder at position: ", builder.field.grid_position, " with global position: ", builder.global_position)
+		DebugLogger.trace("Added builder at position: " + str(builder.field.grid_position) + " with global position: " + str(builder.global_position))
 		builder_controller.add_builder(builder)
 
 func _setup_action_handler() -> void:
@@ -62,13 +63,19 @@ func _connect_game_result_signals() -> void:
 	Global.game_lost.connect(_on_game_lost)
 
 func _on_game_won() -> void:
-	print("Congratulations! You've won the game!")
+	DebugLogger.info("Congratulations! You've won the game!")
 
 func _on_game_lost() -> void:
-	print("Game Over! You've lost the game.")
+	DebugLogger.info("Game Over! You've lost the game.")
 
 func _select_city_center_location() -> void:
 	action_handler._building_selected(city_center)
 	var field = await city_center.city_center_built
-	print("City Center has been built! You can now build additional structures and expand your town.")
+	DebugLogger.info("City Center has been built! You can now build additional structures and expand your town.")
 	_setup_builder_controller(field)
+
+func _disable_ui_if_headless() -> void:
+	if DisplayServer.get_name() == "headless":
+		DebugLogger.info("Running in headless mode, disabling UI.")
+		ui.visible = false
+		ui.process_mode = Node.PROCESS_MODE_DISABLED
