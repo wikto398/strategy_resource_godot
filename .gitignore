@@ -7,3 +7,4 @@
 venv
 logs
 .venv
+__pycache__/

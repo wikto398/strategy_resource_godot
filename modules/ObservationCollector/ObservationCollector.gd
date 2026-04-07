@@ -4,18 +4,21 @@ class_name ObservationCollector extends ObservationCollectorInterface
 @export var build_handler: BuildHandler
 @export var production_handler: ProductionHandler
 
-func _reward() -> float:
-    return 0.0
+var time_penalty: float = 0.01
 
-func _observation() -> Array:
-    return [
-        field_grid.observation()
-    ]
+func _reward() -> float:
+    return production_handler.get_production_reward() - time_penalty
+
+func _observation() -> Dictionary:
+    return {
+        "fields": field_grid.observation(),
+        "global": _global_features()
+    }
 
 func _action_mask() -> Dictionary:
     var available_buildings = _available_buildings()
     var field_masks = _field_masks()
-    return {"field_masks": field_masks, "available_buildings": available_buildings}
+    return {"available_cells": field_masks, "available_buildings": available_buildings}
 
 func _field_masks() -> Array:
     var field_masks = []
@@ -37,3 +40,6 @@ func _available_buildings() -> Array:
         else:
             available_buildings.append(0)
     return available_buildings
+
+func _global_features() -> Array:
+    return [0, 0, 0] # Placeholder for global features like current resources, time, etc.

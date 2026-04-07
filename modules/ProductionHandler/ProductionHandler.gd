@@ -89,3 +89,12 @@ func _update_upkeep_costs(upkeep_change: Dictionary[Enums.TownResource, int]) ->
 	for resource in upkeep_change.keys():
 		current_production[resource] -= upkeep_change[resource]
 	production_updated.emit(current_production)
+
+func get_production_reward() -> float:
+	var reward = 0.0
+	for resource in current_production.keys():
+		if current_production[resource] > 0:
+			reward += current_production[resource] * 0.1
+		elif current_production[resource] < 0:
+			reward += current_production[resource] * 0.2
+	return reward
