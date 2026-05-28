@@ -2,7 +2,7 @@ class_name BuilderController extends Node
 
 signal builder_selected(builder: Builder)
 
-var field_grid: FieldGrid = null
+var field_grid: TerrainFieldGrid = null
 
 var builders: Array[Builder] = []
 var nearest_distances: Dictionary[Vector2i, int] = {}
@@ -91,3 +91,12 @@ func enable_input_on_builders() -> void:
 	DebugLogger.trace("Enabling input on builders...")
 	for builder in builders:
 		builder.process_mode = Node.PROCESS_MODE_INHERIT
+
+func get_builder_by_id(builder_id: int) -> Builder:
+	return builders[builder_id] if builder_id >= 0 and builder_id < len(builders) else null
+
+func observation() -> Array:
+	var obs: Array = []
+	for builder in builders:
+		obs.append(builder.observation())
+	return obs

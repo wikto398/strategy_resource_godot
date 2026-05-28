@@ -1,20 +1,20 @@
 [gd_scene format=3 uid="uid://bfrqdhxq3pe6x"]
 
-[ext_resource type="Script" uid="uid://c67u7ttrjm27s" path="res://modules/Field/Field.gd" id="1_3suqe"]
-[ext_resource type="Texture2D" uid="uid://w2uiwwy38hmo" path="res://assets/terrain/grass/grass_01.png" id="2_o06qu"]
+[ext_resource type="Script" uid="uid://c67u7ttrjm27s" path="res://modules/TerrainField/TerrainField.gd" id="1_s74be"]
+[ext_resource type="Texture2D" uid="uid://w2uiwwy38hmo" path="res://assets/terrain/grass/grass_01.png" id="2_kbhsu"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o06qu"]
 radius = 20.0
 
 [node name="Field" type="Node2D" unique_id=2042672776]
-script = ExtResource("1_3suqe")
+script = ExtResource("1_s74be")
 
 [node name="Elements" type="Node2D" parent="." unique_id=1927334531]
 use_parent_material = true
 
 [node name="Terrain" type="Sprite2D" parent="Elements" unique_id=1256100188]
 use_parent_material = true
-texture = ExtResource("2_o06qu")
+texture = ExtResource("2_kbhsu")
 
 [node name="Structure" type="Sprite2D" parent="Elements" unique_id=473002717]
 

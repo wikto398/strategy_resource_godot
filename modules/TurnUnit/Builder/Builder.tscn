@@ -1,0 +1,62 @@
+[gd_scene format=3 uid="uid://vgsn6mcridso"]
+
+[ext_resource type="Script" uid="uid://dtum8abd3yjts" path="res://modules/TurnUnit/Builder/Builder.gd" id="1_n7cvv"]
+[ext_resource type="Texture2D" uid="uid://ikoviu31rtcu" path="res://assets/units/builder.png" id="2_81q6a"]
+[ext_resource type="Script" uid="uid://dbbvokkta3t2v" path="res://godot_tools/StateMachine/StateMachine.gd" id="3_k16uc"]
+[ext_resource type="Script" uid="uid://cekn048krc6wi" path="res://modules/TurnUnit/states/Idle/Idle.gd" id="4_q1cj1"]
+[ext_resource type="Script" uid="uid://blnwvsaifo7uo" path="res://modules/TurnUnit/states/Moving/Moving.gd" id="5_w15ki"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="6_1nhd0"]
+[ext_resource type="Script" uid="uid://17bfiqsmsjtn" path="res://modules/TurnUnit/states/BuildingState/BuildingState.gd" id="6_af05w"]
+[ext_resource type="Script" uid="uid://bchq68yi22wf0" path="res://modules/TurnUnit/conditions/FieldIsWalkableCondition/FieldIsWalkableCondition.gd" id="7_2qcfj"]
+[ext_resource type="Script" uid="uid://d3xkl3ulov86m" path="res://godot_tools/Condition/ANDCondition/ANDCondition.gd" id="7_bvh6h"]
+[ext_resource type="Script" uid="uid://bix4j0tp0eqbi" path="res://modules/TurnUnit/conditions/NoUnitOnFieldCondition/NoUnitOnFieldCondition.gd" id="8_ufqaw"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_wrokc"]
+
+[sub_resource type="Resource" id="Resource_6ki6r"]
+script = ExtResource("7_2qcfj")
+metadata/_custom_type_script = "uid://bchq68yi22wf0"
+
+[sub_resource type="Resource" id="Resource_nngsf"]
+script = ExtResource("8_ufqaw")
+metadata/_custom_type_script = "uid://bix4j0tp0eqbi"
+
+[sub_resource type="Resource" id="Resource_2qcfj"]
+script = ExtResource("7_bvh6h")
+conditions = Array[ExtResource("6_1nhd0")]([SubResource("Resource_6ki6r"), SubResource("Resource_nngsf")])
+metadata/_custom_type_script = "uid://d3xkl3ulov86m"
+
+[node name="Builder" type="Node2D" unique_id=1311362941]
+script = ExtResource("1_n7cvv")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1190808165]
+texture = ExtResource("2_81q6a")
+hframes = 4
+vframes = 3
+
+[node name="Area2D" type="Area2D" parent="." unique_id=428854113]
+collision_layer = 3
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1906969576]
+shape = SubResource("CircleShape2D_wrokc")
+debug_color = Color(0.60987985, 0.53951544, 0, 0.41960785)
+
+[node name="StateMachine" type="Node" parent="." unique_id=894926679 node_paths=PackedStringArray("current_state")]
+script = ExtResource("3_k16uc")
+current_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine" unique_id=1391139371]
+script = ExtResource("4_q1cj1")
+metadata/_custom_type_script = "uid://cekn048krc6wi"
+
+[node name="Moving" type="Node" parent="StateMachine" unique_id=1772693657]
+script = ExtResource("5_w15ki")
+condition = SubResource("Resource_2qcfj")
+metadata/_custom_type_script = "uid://blnwvsaifo7uo"
+
+[node name="Building" type="Node" parent="StateMachine" unique_id=2128169271]
+script = ExtResource("6_af05w")
+metadata/_custom_type_script = "uid://17bfiqsmsjtn"
+
+[connection signal="input_event" from="Area2D" to="." method="_on_area_2d_input_event"]

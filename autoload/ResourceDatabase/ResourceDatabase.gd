@@ -14,7 +14,7 @@ func load_buildings() -> Array[Building]:
 	for building in _get_all_building_resources_from_path(BUILDING_PATH, true):
 		if building is Building:
 			buildings.append(building)
-			var building_index = buildings.size()
+			var building_index = buildings.size() - 1
 			building_to_int[building] = building_index
 			int_to_building[building_index] = building
 		else:

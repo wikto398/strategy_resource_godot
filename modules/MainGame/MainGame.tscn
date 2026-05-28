@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cct3buqlif13s" path="res://modules/MainGame/MainGame.gd" id="1_1cjsp"]
 [ext_resource type="Resource" uid="uid://cr1yt6lti8707" path="res://resources/buildings/housing/CityCenter.tres" id="2_5y0dg"]
-[ext_resource type="PackedScene" uid="uid://cv6ordwtq1xd" path="res://modules/FieldGrid/FieldGrid.tscn" id="2_k75fg"]
+[ext_resource type="PackedScene" uid="uid://cv6ordwtq1xd" path="res://modules/TerrainFieldGrid/TerrainFieldGrid.tscn" id="2_k75fg"]
 [ext_resource type="Script" uid="uid://2ia1jf1orr1b" path="res://modules/BuildHandler/BuildHandler.gd" id="3_sek8c"]
 [ext_resource type="PackedScene" uid="uid://nbxeg3jhhghn" path="res://ui/ProductionUI/ProductionUI.tscn" id="3_sre2q"]
 [ext_resource type="PackedScene" uid="uid://ch84f053mjx2" path="res://ui/BuildingSelector/BuildingSelector.tscn" id="4_8hgnl"]
@@ -21,7 +21,7 @@
 script = ExtResource("1_1cjsp")
 city_center = ExtResource("2_5y0dg")
 
-[node name="FieldGrid" parent="." unique_id=1706481387 instance=ExtResource("2_k75fg")]
+[node name="TerrainFieldGrid" parent="." unique_id=1706481387 instance=ExtResource("2_k75fg")]
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=765600916]
 
@@ -37,7 +37,7 @@ metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 
 [node name="BuildHandler" type="Node" parent="." unique_id=1262118961 node_paths=PackedStringArray("field_grid", "production_handler")]
 script = ExtResource("3_sek8c")
-field_grid = NodePath("../FieldGrid")
+field_grid = NodePath("../TerrainFieldGrid")
 production_handler = NodePath("../ProductionHandler")
 metadata/_custom_type_script = "uid://2ia1jf1orr1b"
 
@@ -64,15 +64,17 @@ script = ExtResource("14_c7686")
 [node name="Sender" type="Node" parent="EnvironmentConnector" unique_id=2144692131]
 script = ExtResource("15_lp5vc")
 
-[node name="ObservationCollector" type="Node" parent="EnvironmentConnector" unique_id=1069008489 node_paths=PackedStringArray("field_grid", "build_handler", "production_handler")]
+[node name="ObservationCollector" type="Node" parent="EnvironmentConnector" unique_id=1069008489 node_paths=PackedStringArray("field_grid", "build_handler", "production_handler", "builder_controller")]
 script = ExtResource("12_6dhxc")
-field_grid = NodePath("../../FieldGrid")
+field_grid = NodePath("../../TerrainFieldGrid")
 build_handler = NodePath("../../BuildHandler")
 production_handler = NodePath("../../ProductionHandler")
+builder_controller = NodePath("../../BuilderController")
 metadata/_custom_type_script = "uid://inlodswbcy0c"
 
-[node name="ActionExecutor" type="Node" parent="EnvironmentConnector" unique_id=984220404 node_paths=PackedStringArray("build_handler", "field_grid")]
+[node name="ActionExecutor" type="Node" parent="EnvironmentConnector" unique_id=984220404 node_paths=PackedStringArray("build_handler", "field_grid", "builder_controller")]
 script = ExtResource("16_c7686")
 build_handler = NodePath("../../BuildHandler")
-field_grid = NodePath("../../FieldGrid")
+field_grid = NodePath("../../TerrainFieldGrid")
+builder_controller = NodePath("../../BuilderController")
 metadata/_custom_type_script = "uid://bde47ewa5ohcg"

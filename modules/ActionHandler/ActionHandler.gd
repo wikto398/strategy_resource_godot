@@ -2,13 +2,13 @@ class_name ActionHandler extends Node
 
 @export var build_handler: BuildHandler
 @export var production_handler: ProductionHandler
-@export var field_grid: FieldGrid
+@export var field_grid: TerrainFieldGrid
 @export var building_selector: BuildingSelector
 @export var builder_controller: BuilderController
 
 var selected
 
-func setup(_build_handler: BuildHandler, _production_handler: ProductionHandler, _field_grid: FieldGrid, _building_selector: BuildingSelector, _builder_controller: BuilderController) -> void:
+func setup(_build_handler: BuildHandler, _production_handler: ProductionHandler, _field_grid: TerrainFieldGrid, _building_selector: BuildingSelector, _builder_controller: BuilderController) -> void:
 	build_handler = _build_handler
 	production_handler = _production_handler
 	field_grid = _field_grid

@@ -1,3 +1,4 @@
+from .GameNetworkOld import GameNetworkOld
 from .GameNetwork import GameNetwork
 
-all = ["GameNetwork"]
+all = ["GameNetwork", "GameNetworkOld"]

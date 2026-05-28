@@ -4,7 +4,7 @@ var BUILDER_SCENE = preload("uid://vgsn6mcridso")
 
 @export var city_center: CityCenter
 
-@onready var field_grid: FieldGrid = $FieldGrid
+@onready var field_grid: TerrainFieldGrid = $TerrainFieldGrid
 @onready var build_handler: BuildHandler = $BuildHandler
 @onready var builder_controller: BuilderController = $BuilderController
 @onready var production_handler: ProductionHandler = $ProductionHandler
@@ -77,5 +77,4 @@ func _select_city_center_location() -> void:
 func _disable_ui_if_headless() -> void:
 	if DisplayServer.get_name() == "headless":
 		DebugLogger.info("Running in headless mode, disabling UI.")
-		ui.visible = false
-		ui.process_mode = Node.PROCESS_MODE_DISABLED
+		ui.queue_free()

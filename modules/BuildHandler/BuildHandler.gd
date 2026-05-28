@@ -1,11 +1,11 @@
 class_name BuildHandler extends Node
 
-@export var field_grid: FieldGrid
+@export var field_grid: TerrainFieldGrid
 @export var production_handler: ProductionHandler
 
 func _ready() -> void:
 	if not field_grid:
-		DebugLogger.error("BuildHandler requires a reference to FieldGrid.")
+		DebugLogger.error("BuildHandler requires a reference to TerrainFieldGrid.")
 	if not production_handler:
 		DebugLogger.error("BuildHandler requires a reference to ProductionHandler.")
 

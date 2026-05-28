@@ -1,5 +1,4 @@
-class_name FieldGrid
-extends Node2D
+class_name TerrainFieldGrid extends PointyHexGrid
 
 const PROBABILITY_WATER_TO_GRASS = [1, 3]
 const PROBABILITY_BORDER_GRASS = [1, 4, 2]
@@ -8,21 +7,10 @@ const STRUCTURE_PLACEMENT_PROBABILITY = 0.4
 
 signal unhighlight_all_fields
 signal update_visuals()
-signal field_clicked(field: Field)
-
-@export var columns: int
-@export var rows: int
-@export var hex_size: float = 16.0
-
-var fields: Dictionary = {}
-
-static var instance: FieldGrid = null
+signal field_clicked(field: TerrainField)
 
 func _ready():
-	if instance:
-		push_error("Multiple instances of FieldGrid detected. This is not supported.")
-	else:
-		instance = self
+	super._ready()
 	_add_empty_fields()
 	generate_ca_map(3)
 	_set_boundary_fields()
@@ -37,7 +25,7 @@ func _add_empty_fields():
 	var random = RandomNumberGenerator.new()
 	for q in range(columns):
 		for r in range(rows):
-			var field := field_scene.instantiate() as Field
+			var field := field_scene.instantiate() as TerrainField
 			field.terrain_type = base_terrains[random.rand_weighted(PROBABILITY_WATER_TO_GRASS)]
 			add_child(field)
 			unhighlight_all_fields.connect(field._on_unhighlight)
@@ -69,29 +57,8 @@ func _hex_to_pixel(q: int, r: int) -> Vector2:
 func _is_boundary(v: Vector2i) -> bool:
 	return v.x == 0 or v.y == 0 or v.x == columns - 1 or v.y == rows - 1
 
-func get_field_at(v: Vector2i) -> Field:
+func get_field_at(v: Vector2i) -> TerrainField:
 	return fields.get(v, null)
-
-const EVEN_R_DIRECTIONS := [
-	Vector2i(-1, -1), Vector2i(0, -1),
-	Vector2i(-1, 0),  Vector2i(1, 0),
-	Vector2i(-1, 1),  Vector2i(0, 1),
-]
-
-const ODD_R_DIRECTIONS := [
-	Vector2i(0, -1),  Vector2i(1, -1),
-	Vector2i(-1, 0),  Vector2i(1, 0),
-	Vector2i(0, 1),   Vector2i(1, 1),
-]
-
-func get_neighbours(v: Vector2i) -> Array[Field]:
-	var result: Array[Field] = []
-	var directions = EVEN_R_DIRECTIONS if (v.y & 1) == 0 else ODD_R_DIRECTIONS
-	for d in directions:
-		var f := get_field_at(v + d)
-		if f:
-			result.append(f)
-	return result
 
 func _center():
 	var viewport_center := get_viewport_rect().size * 0.5
@@ -110,8 +77,8 @@ func _center():
 
 	position = viewport_center - grid_center
 
-func _on_field_clicked(field: Field) -> void:
-	DebugLogger.trace("Field clicked at position: " + str(field.grid_position) + " with global position: " + str(field.global_position))
+func _on_field_clicked(field: TerrainField) -> void:
+	DebugLogger.trace("TerrainField clicked at position: " + str(field.grid_position) + " with global position: " + str(field.global_position))
 	field_clicked.emit(field)
 
 func generate_ca_map(iterations: int = 3):
@@ -182,8 +149,8 @@ func _group_structures_by_terrain(structures: Array[Structure]) -> Dictionary[Te
 			grouped[terrain_type].append(structure)
 	return grouped
 
-func get_nearest_walkable_fields(start: Vector2i, amount: int) -> Array[Field]:
-	var result: Array[Field] = []
+func get_nearest_walkable_fields(start: Vector2i, amount: int) -> Array[TerrainField]:
+	var result: Array[TerrainField] = []
 	var visited: Dictionary[Vector2i, bool] = {}
 	var queue: Array[Vector2i] = [start]
 	var distance: Dictionary[Vector2i, int] = {start: 0}

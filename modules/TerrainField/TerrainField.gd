@@ -1,4 +1,4 @@
-class_name Field extends Node2D
+class_name TerrainField extends Field
 
 const UNWALKABLE_TERRAIN_TYPES = [Terrain.TerrainType.WATER, Terrain.TerrainType.MOUNTAIN]
 
@@ -7,8 +7,7 @@ const UNAVAIABLE_MODULATION = Color(1, 0, 0, 0.5)
 const AVAILABLE_MODULATION = Color(0, 1, 0, 0.5)
 const DEFAULT_MODULATION = Color(1, 1, 1, 1)
 
-signal field_clicked(field: Field)
-signal building_finished(field: Field)
+signal building_finished(field: TerrainField)
 signal unit_moved_out()
 
 @onready var elements: Node2D = $Elements
@@ -22,6 +21,7 @@ var unit: Unit = null:
 		if not unit:
 			unit_moved_out.emit()
 var continent: int = 0
+@export var _grid_position: Vector2i
 
 @export var terrain_type: Terrain.TerrainType = Terrain.TerrainType.GRASS:
 	set(value):
@@ -35,10 +35,8 @@ var continent: int = 0
 		building = value
 		if building:
 			building_texture.texture = building.icon
-@export var grid_position: Vector2i = Vector2i.ZERO
 @export var structure: Structure
 
-var movement_cost: int = 1
 var build_bonus: Dictionary[Enums.TownResource, Array] = {}
 var current_bonus: Dictionary[Enums.TownResource, int] = {}
 var in_progress_building: Building = null:
@@ -113,3 +111,12 @@ func observation() -> Array:
 		1 if structure else 0,
 		1 if unit else 0,
 	]
+
+func _get_grid_position():
+	return _grid_position
+
+func _set_grid_position(value: Vector2i):
+	_grid_position = value
+
+func _get_movement_cost():
+	return 1

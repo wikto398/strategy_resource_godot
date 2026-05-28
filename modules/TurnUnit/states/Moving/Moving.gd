@@ -1,16 +1,17 @@
 class_name Moving extends State
 
 var current_path: Array[Field] = []
+@export var condition: Condition
 
 func enter(_user: Node) -> void:
-	a_star(_user.field, _user.target_position)
+	current_path = Pathing.a_star(_user.field, _user.target_position, TerrainFieldGrid.instance, self.heuristic, self.condition, _user)
 
 func exit(_user: Node) -> void:
 	_user.target_position = null
 
 func update(_delta: float, _user: Node) -> void:
 	if not current_path:
-		a_star(_user.field, _user.target_position)
+		current_path = Pathing.a_star(_user.field, _user.target_position, TerrainFieldGrid.instance, self.heuristic, self.condition, _user)
 
 	for dummy in range(1 + GameData.builder_speed_multiplier):
 		if current_path.size() <= 1:
@@ -27,7 +28,7 @@ func update(_delta: float, _user: Node) -> void:
 				}))
 
 			var previous_path = current_path.duplicate()
-			a_star(_user.field, _user.target_position, true)
+			current_path = Pathing.a_star(_user.field, _user.target_position, TerrainFieldGrid.instance, self.heuristic, self.condition, _user)
 			if not current_path:
 				DebugLogger.debug("{builder}: No alternative path found, waiting for field to become available."
 					.format({builder = _user.name}))
@@ -38,37 +39,6 @@ func update(_delta: float, _user: Node) -> void:
 				await next_field.unit_moved_out
 
 		_move_to(_user, next_field)
-
-func a_star(start: Field, goal: Field, skip_blocked_by_unit: bool = false) -> void:
-	var open_set: PriorityQueue = PriorityQueue.new()
-	var came_from: Dictionary[Field, Field] = {}
-	var g_score: Dictionary[Field, int] = {}
-	var f_score: Dictionary[Field, int] = {}
-
-	g_score[start] = 0
-	f_score[start] = heuristic(start, goal)
-	open_set.push(start, f_score[start])
-
-	var field_grid: FieldGrid = FieldGrid.instance
-
-	while not open_set.is_empty():
-		var current: Field = open_set.pop()
-		if current == goal:
-			current_path = reconstruct_path(came_from, current)
-			return
-
-		for neighbor in field_grid.get_neighbours(current.grid_position):
-			if not neighbor.walkable or (neighbor.unit and (not skip_blocked_by_unit or neighbor.unit != self)):
-				continue
-			var tentative_g_score = g_score[current] + neighbor.movement_cost
-			if not g_score.has(neighbor) or tentative_g_score < g_score[neighbor]:
-				came_from[neighbor] = current
-				g_score[neighbor] = tentative_g_score
-				f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
-				open_set.push(neighbor, f_score[neighbor])
-
-	DebugLogger.debug("No path found from {start} to {goal}".format({start = start.grid_position, goal = goal.grid_position}))
-	current_path = []
 
 func heuristic(a: Field, b: Field) -> int:
 	return abs(a.grid_position.x - b.grid_position.x) + abs(a.grid_position.y - b.grid_position.y)

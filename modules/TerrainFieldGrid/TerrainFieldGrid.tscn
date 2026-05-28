@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cv6ordwtq1xd"]
+
+[ext_resource type="Script" uid="uid://c4a6cvravwnka" path="res://modules/TerrainFieldGrid/TerrainFieldGrid.gd" id="1_dmnef"]
+
+[node name="TerrainFieldGrid" type="Node2D" unique_id=1706481387]
+script = ExtResource("1_dmnef")
+columns = 16
+rows = 12
