@@ -36,6 +36,7 @@ func build_on_field(field: Field, building: Building) -> void:
 			building = building.duplicate() as Building
 		else:
 			building.remove_unique_building_from_selector()
+			building.already_built = true
 		production_handler.start_production(building, field)
 	else:
 		DebugLogger.info("Cannot build " + building.name + " on field at " + str(field.grid_position))

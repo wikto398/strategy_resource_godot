@@ -2,6 +2,8 @@ extends Node
 
 signal population_changed()
 
+const MAX_BUILDERS: int = 5
+
 func observation() -> Array:
     return [
         Turn.turn,

@@ -95,6 +95,7 @@ func _calculate_current_bonus(town_resource: Enums.TownResource) -> void:
 
 func finish_building() -> void:
 	if in_progress_building:
+		DebugLogger.debug("Finishing building: " + in_progress_building.name + " at field: " + str(grid_position))
 		in_progress_building.building_finished(self)
 		building_finished.emit(self)
 	else:

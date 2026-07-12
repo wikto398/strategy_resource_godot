@@ -12,7 +12,7 @@ config_version=5
 
 config/name="strategy_ai"
 run/main_scene="uid://d3ifaj17vcjw5"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]

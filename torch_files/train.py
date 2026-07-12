@@ -18,7 +18,7 @@ def main():
         envs = [Environment(connector) for connector in connectors]
 
         # network = GameNetworkOld(n_cells=192, cell_features=5, n_global_features=15, n_buildings=10, n_cells_out=192)
-        network = GameNetwork(n_cell_features=5, n_global_features=15, n_buildings=9, n_builder_features=10, d_model=128, n_heads=4)
+        network = GameNetwork(n_cell_features=5, n_global_features=15, n_buildings=9, n_builder_features=5, d_model=128, n_heads=4)
         optimizer = torch.optim.Adam(network.parameters(), lr=3e-4)
         summary_writer = SummaryWriter(log_dir="logs/tensorboard")
         agent = PPOAgent(network=network, optimizer=optimizer, envs=envs, rollout_size=64, tensorboard_writer=summary_writer)

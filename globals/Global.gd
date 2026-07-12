@@ -20,5 +20,7 @@ func reset_environment() -> void:
         return
     in_reset = true
     win_conditions_met = 0
+    for building in ResourceDatabase.buildings:
+        building.already_built = false
     await get_tree().reload_current_scene()
     in_reset = false

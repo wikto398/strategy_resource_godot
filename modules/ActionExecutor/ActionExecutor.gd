@@ -67,4 +67,12 @@ func _next_turn():
 func _flat_to_2d_index(flat_index: int, width: int) -> Vector2i:
     var x = flat_index % width
     var y = flat_index / width
+    DebugLogger.info(
+        "flat=%d -> coord=%s actual=%s"
+        % [
+            flat_index,
+            Vector2i(x,y),
+            field_grid.get_field_at(Vector2i(x, y)).grid_position if field_grid.get_field_at(Vector2i(x, y)) != null else "null",
+        ]
+    )
     return Vector2i(x, y)

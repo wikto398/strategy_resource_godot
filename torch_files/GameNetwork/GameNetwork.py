@@ -146,40 +146,90 @@ class GameNetwork(nn.Module):
             "value":             value,              # (B, 1)
         })
 
-    def _sample_actions(self, logits: TensorDict) -> torch.Tensor:
-        action_dist   = Categorical(logits=logits["action_logits"])
-        builder_dist  = Categorical(logits=logits["builder_logits"])
-        building_dist = Categorical(logits=logits["building_logits"])
+    def _sample_actions(self, logits):
+        B = logits["action_logits"].shape[0]
+        device = logits["action_logits"].device
 
-        action   = action_dist.sample()    # (B,)
-        builder  = builder_dist.sample()   # (B,)
-        building = building_dist.sample()  # (B,)
+        action = Categorical(
+            logits=logits["action_logits"]
+        ).sample()
 
-        B = action.size(0)
 
-        # gather selected builder's move cell logits
-        move_logits          = logits["move_cell_logits"]                    # (B, n_builders, n_cells)
-        selected_move_logits = move_logits[torch.arange(B), builder]         # (B, n_cells)
+        builder = torch.zeros(
+            B,
+            dtype=torch.long,
+            device=device
+        )
 
-        # guard: if all -inf (dummy or no valid cells), replace with zeros so Categorical doesn't nan
-        all_masked_move      = selected_move_logits.isinf().all(dim=-1, keepdim=True)
-        selected_move_logits = selected_move_logits.masked_fill(all_masked_move, 0.0)
-        move_cell            = Categorical(logits=selected_move_logits).sample()   # (B,)
+        building = torch.zeros(
+            B,
+            dtype=torch.long,
+            device=device
+        )
 
-        # gather selected building's build cell logits
-        build_logits          = logits["build_cell_logits"]                   # (B, n_buildings, n_cells)
-        selected_build_logits = build_logits[torch.arange(B), building]       # (B, n_cells)
+        cell = torch.zeros(
+            B,
+            dtype=torch.long,
+            device=device
+        )
 
-        # guard: same as above
-        all_masked_build      = selected_build_logits.isinf().all(dim=-1, keepdim=True)
-        selected_build_logits = selected_build_logits.masked_fill(all_masked_build, 0.0)
-        build_cell            = Categorical(logits=selected_build_logits).sample()  # (B,)
 
-        # pick cell based on action type
-        cell = torch.where(action == 1, move_cell, build_cell)               # (B,)
+        # MOVE
+        move_idx = action == 1
 
-        actions = torch.stack([action, builder, building, cell], dim=-1)  # (B, 4)
-        return actions
+        if move_idx.any():
+
+            builder[move_idx] = Categorical(
+                logits=logits["builder_logits"][move_idx]
+            ).sample()
+
+            selected = logits["move_cell_logits"][
+                move_idx,
+                builder[move_idx]
+            ]
+
+            all_masked = torch.isinf(selected).all(dim=-1, keepdim=True)
+
+            selected = selected.masked_fill(all_masked, 0.0)
+
+            cell[move_idx] = Categorical(
+                logits=selected
+            ).sample()
+
+
+        # BUILD
+        build_idx = action == 2
+
+        if build_idx.any():
+
+            building[build_idx] = Categorical(
+                logits=logits["building_logits"][build_idx]
+            ).sample()
+
+            selected = logits["build_cell_logits"][
+                build_idx,
+                building[build_idx]
+            ]
+
+            all_masked = torch.isinf(selected).all(dim=-1, keepdim=True)
+
+            selected = selected.masked_fill(all_masked, 0.0)
+
+            sampled = Categorical(logits=selected).sample()
+
+            cell[build_idx] = sampled
+
+        action_out = torch.stack(
+            [
+                action,
+                builder,
+                building,
+                cell
+            ],
+            dim=-1
+        )
+
+        return action_out
 
 
     def _compute_log_prob(self, logits: TensorDict, actions: torch.Tensor) -> torch.Tensor:
@@ -196,7 +246,10 @@ class GameNetwork(nn.Module):
 
         action_lp   = Categorical(logits=logits["action_logits"]).log_prob(action)
         builder_lp  = Categorical(logits=logits["builder_logits"]).log_prob(builder)
-        building_lp = Categorical(logits=logits["building_logits"]).log_prob(building)
+
+        all_masked_building = logits["building_logits"].isinf().all(dim=-1, keepdim=True)
+        building_logits = logits["building_logits"].masked_fill(all_masked_building, 0.0)
+        building_lp = Categorical(logits=building_logits).log_prob(building)
 
         # move cell log prob — guard against all -inf
         move_cell_logits = logits["move_cell_logits"][torch.arange(B), builder]
@@ -227,26 +280,93 @@ class GameNetwork(nn.Module):
         actions = self._sample_actions(logits)
 
         log_prob = self._compute_log_prob(logits, actions)
+        value    = logits["value"].squeeze(-1)
 
         return TensorDict({
             "action":    actions,               # TensorDict of all action components
             "log_prob":  log_prob,              # (B,)
-            "value":     logits["value"],       # (B, 1)
+            "value":     value,       # (B, 1)
         }, batch_size=obs.batch_size)
+
+    def _safe_entropy(self, logits: torch.Tensor) -> torch.Tensor:
+        """
+        Computes entropy while protecting against all -inf logits.
+        logits: (..., n_actions)
+        returns: (...,)
+        """
+        all_masked = torch.isneginf(logits).all(dim=-1)
+
+        # replace invalid distributions temporarily
+        safe_logits = logits.clone()
+        safe_logits[all_masked] = 0.0
+
+        entropy = Categorical(logits=safe_logits).entropy()
+
+        # invalid distributions have no entropy
+        entropy[all_masked] = 0.0
+
+        return entropy
+
 
     def evaluate(self, obs: TensorDict, actions: TensorDict, action_mask: TensorDict | None = None) -> TensorDict:
         logits = self._get_logits(obs, action_mask)
 
         log_probs = self._compute_log_prob(logits, actions)
 
-        # entropy — sum over all sub-distributions
-        action_ent   = Categorical(logits=logits["action_logits"]).entropy()
-        builder_ent  = Categorical(logits=logits["builder_logits"]).entropy()
-        building_ent = Categorical(logits=logits["building_logits"]).entropy()
-        entropy = action_ent + builder_ent + building_ent   # (B,)
+        action = actions[:, 0]
+        builder = actions[:, 1]
+        building = actions[:, 2]
+
+        is_move = action == 1
+        is_build = action == 2
+
+        B = action.size(0)
+        batch_idx = torch.arange(B, device=action.device)
+
+        # Action type entropy
+        action_ent = self._safe_entropy(
+            logits["action_logits"]
+        )
+
+        # Builder selection entropy
+        builder_ent = self._safe_entropy(
+            logits["builder_logits"]
+        )
+
+        # Building selection entropy
+        building_ent = self._safe_entropy(
+            logits["building_logits"]
+        )
+
+        # Move cell entropy
+        selected_move_cells = logits["move_cell_logits"][
+            batch_idx,
+            builder
+        ]
+
+        move_cell_ent = self._safe_entropy(
+            selected_move_cells
+        )
+
+        # Build cell entropy
+        selected_build_cells = logits["build_cell_logits"][
+            batch_idx,
+            building
+        ]
+
+        build_cell_ent = self._safe_entropy(
+            selected_build_cells
+        )
+
+        # Only include entropy of distributions actually used
+        entropy = (
+            action_ent
+            + torch.where(is_move, builder_ent + move_cell_ent, 0.0)
+            + torch.where(is_build, building_ent + build_cell_ent, 0.0)
+        )
 
         return TensorDict({
             "log_probs": log_probs,
-            "value":     logits["value"],
-            "entropy":   entropy,
+            "value": logits["value"].squeeze(-1),
+            "entropy": entropy,
         }, batch_size=obs.batch_size)

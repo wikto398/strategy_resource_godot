@@ -23,6 +23,7 @@ signal remove_from_selector(building: Building)
 @export var building_progress: int = 0
 @export var conditions: Array[Condition] = []
 @export var unique: bool = false
+@export var already_built: bool = false
 
 func build() -> bool:
 	if GameData.population <= GameData.working_population:

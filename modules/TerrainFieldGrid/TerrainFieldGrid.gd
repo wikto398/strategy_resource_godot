@@ -5,6 +5,8 @@ const PROBABILITY_BORDER_GRASS = [1, 4, 2]
 const PROBABILITY_INNER_GRASS = [1, 6, 3]
 const STRUCTURE_PLACEMENT_PROBABILITY = 0.4
 
+var ordered_fields: Array[TerrainField] = []
+
 signal unhighlight_all_fields
 signal update_visuals()
 signal field_clicked(field: TerrainField)
@@ -18,6 +20,15 @@ func _ready():
 	_add_structures()
 	update_visuals.emit()
 	_center()
+	_add_ordered_fields()
+
+func _add_ordered_fields():
+	ordered_fields.clear()
+	for j in range(rows):
+		for i in range(columns):
+			var field = get_field_at(Vector2i(i, j))
+			if field:
+				ordered_fields.append(field)
 
 func _add_empty_fields():
 	var field_scene = load("uid://bfrqdhxq3pe6x")
@@ -31,8 +42,6 @@ func _add_empty_fields():
 			unhighlight_all_fields.connect(field._on_unhighlight)
 			field.field_clicked.connect(_on_field_clicked)
 			update_visuals.connect(field._set_texture)
-
-			# field.z_index = q + r * columns
 
 			var pos := _hex_to_pixel(q, r)
 			field.position = pos
@@ -174,6 +183,6 @@ func get_nearest_walkable_fields(start: Vector2i, amount: int) -> Array[TerrainF
 
 func observation() -> Array:
 	var obs: Array = []
-	for coords in fields:
-		obs.append(fields[coords].observation())
+	for field in ordered_fields:
+		obs.append(field.observation())
 	return obs
