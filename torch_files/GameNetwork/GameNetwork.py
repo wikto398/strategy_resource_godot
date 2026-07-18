@@ -35,66 +35,78 @@ class GameNetwork(nn.Module):
         self.builder_head = nn.Linear(d_model, 1)
         self.building_head = nn.Linear(d_model, n_buildings)
         self.move_cell_head = nn.Linear(d_model * 2, 1)
-        self.build_cell_head = nn.Linear(d_model * 2, 1)
+        self.build_cell_head = nn.Linear(d_model * 3, 1)
         self.value_head = nn.Linear(d_model, 1)
 
     def _get_logits(self, obs: TensorDict, action_mask: TensorDict | None) -> TensorDict:
         cell_features    = obs["fields"]    # (B, cells, cell_features)
         global_features  = obs["global"]   # (B, global_features)
         builder_features = obs["builders"] # (B, builders, builder_features)
-
-        moveable_cells      = action_mask["moveable_cells"]      if action_mask is not None else None  # (B, builders, cells)
-        buildable_cells     = action_mask["buildable_cells"]     if action_mask is not None else None  # (B, n_buildings, cells)
-        available_buildings = action_mask["available_buildings"] if action_mask is not None else None  # (B, n_buildings)
-
-        B       = cell_features.size(0)
+        B = cell_features.size(0)
+        n_builders = builder_features.size(1)
+        n_buildings = self.n_buildings
         n_cells = cell_features.size(1)
-        device  = cell_features.device
 
+        device = cell_features.device
+
+        moveable_cells      = action_mask["moveable_cells"]      if action_mask is not None else torch.ones((B, n_builders, n_cells), dtype=torch.bool, device=device) # (B, builders, cells)
+        buildable_cells     = action_mask["buildable_cells"]     if action_mask is not None else torch.ones((B, n_buildings, n_cells), dtype=torch.bool, device=device)  # (B, n_buildings, cells)
+        available_buildings = action_mask["available_buildings"] if action_mask is not None else torch.ones((B, n_buildings), dtype=torch.bool, device=device)  # (B, n_buildings)
+        available_builders = action_mask["available_builders"]    if action_mask is not None else torch.ones((B, n_builders), dtype=torch.bool, device=device)  # (B, n_builders)
+
+        # Cell and global features encoding
         cell_encoded   = self.cell_encoder(cell_features)              # (B, cells, d_model)
         global_encoded = self.global_encoder(global_features)          # (B, d_model)
 
-        # --- building cell scores (never depend on builders) ---
-        building_idx = torch.arange(self.n_buildings, device=device)
-        bt    = self.building_encoder(building_idx)                    # (n_buildings, d_model)
-        bt    = bt.unsqueeze(0).expand(B, -1, -1)                     # (B, n_buildings, d_model)
+        # Building encoding
+        bt = self.building_encoder(torch.arange(n_buildings, device=device))  # (n_buildings, d_model)
+        bt = bt.unsqueeze(0).expand(B, -1, -1)  # (B, n_buildings, d_model)
+
+        # Build cell logits computation
+        g_exp = global_encoded[:,None,None,:].expand(
+            B,
+            n_buildings,
+            n_cells,
+            -1
+        )
+
 
         bt_exp = bt.unsqueeze(2).expand(-1, -1, n_cells, -1)          # (B, n_buildings, n_cells, d_model)
         c_exp2 = cell_encoded.unsqueeze(1).expand(-1, self.n_buildings, -1, -1)
-        btc    = torch.cat([bt_exp, c_exp2], dim=-1)                  # (B, n_buildings, n_cells, d_model*2)
+        btc = torch.cat(
+            [
+                bt_exp,
+                c_exp2,
+                g_exp
+            ],
+            dim=-1
+        ) # (B, n_buildings, n_cells, d_model*3)
         build_cell_logits = self.build_cell_head(btc).squeeze(-1)     # (B, n_buildings, n_cells)
+        build_cell_logits = build_cell_logits.masked_fill(~buildable_cells, float('-inf'))
 
-        if buildable_cells is not None:
-            build_cell_logits = build_cell_logits.masked_fill(~buildable_cells, float('-inf'))
-
+        # Building logits computation
         building_logits = self.building_head(global_encoded)          # (B, n_buildings)
-        if available_buildings is not None:
-            building_logits = building_logits.masked_fill(~available_buildings, float('-inf'))
+        building_logits = building_logits.masked_fill(~available_buildings, float('-inf'))
 
-        # --- no builders case ---
-        n_builders = builder_features.size(1)
-        if n_builders == 0:
-            action_logits = torch.zeros(B, 3, device=device)
-            action_logits[:, 1] = float('-inf')   # move impossible
+        def check_nan(name, x):
+            if torch.isnan(x).any() or torch.isinf(x).any():
+                print(name, "BAD")
+                print(x)
+                raise RuntimeError(name)
 
-            # mask build if no buildings available either
-            if available_buildings is not None:
-                no_buildings = (~available_buildings).all(dim=-1)     # (B,)
-                action_logits[no_buildings, 2] = float('-inf')        # build impossible too
-
-            return TensorDict({
-                "action_logits":     action_logits,                                        # (B, 3)
-                "builder_logits":    torch.zeros(B, 1, device=device),                    # dummy
-                "building_logits":   building_logits,                                     # (B, n_buildings)
-                "move_cell_logits":  torch.full((B, 1, n_cells), float('-inf'), device=device),  # dummy
-                "build_cell_logits": build_cell_logits,                                   # (B, n_buildings, n_cells)
-                "value":             self.value_head(global_encoded),                     # (B, 1)
-            })
-
-        # --- normal path: builders exist ---
+        # Builders encoding
         builder_encoded = self.builder_encoder(builder_features)      # (B, builders, d_model)
 
-        x, _ = self.builder_to_builder_attention(builder_encoded, builder_encoded, builder_encoded)
+        attention_mask = ~available_builders.clone()
+        has_builder = available_builders.any(dim=-1)
+        no_builders = ~has_builder
+
+        if no_builders.any():
+            attention_mask[no_builders, 0] = False
+
+        # Attention mechanisms
+        x, _ = self.builder_to_builder_attention(builder_encoded, builder_encoded, builder_encoded, key_padding_mask=~attention_mask)
+
         x     = self.norm1(builder_encoded + x)
 
         x2, _ = self.builder_to_cell_attention(x, cell_encoded, cell_encoded)
@@ -103,38 +115,47 @@ class GameNetwork(nn.Module):
         x3, _ = self.builder_to_global_attention(x, global_encoded.unsqueeze(1), global_encoded.unsqueeze(1))
         x     = self.norm3(x + x3)                                   # (B, n_builders, d_model)
 
-        pooled = x.mean(dim=1)                                        # (B, d_model)
+        mask = available_builders.unsqueeze(-1)
 
-        action_logits   = self.action_head(pooled)                    # (B, 3)
+        x_masked = x * mask
+
+        pooled = (
+            x_masked.sum(dim=1)
+            /
+            mask.sum(dim=1).clamp(min=1)
+        ) # (B, d_model)
+
+        # Builder logits computation with masking
         builder_logits  = self.builder_head(x).squeeze(-1)           # (B, n_builders)
+        builder_logits = builder_logits.masked_fill(~available_builders, float('-inf'))
 
-        # mask build if no buildings available
-        if available_buildings is not None:
-            no_buildings = (~available_buildings).all(dim=-1)         # (B,)
-            action_logits[no_buildings, 2] = float('-inf')
+        # Action logits computation
+        action_logits   = self.action_head(pooled)                    # (B, 3)
 
-        # move cell scores per builder
+        # Move cell logits computation
         x_exp = x.unsqueeze(2).expand(-1, -1, n_cells, -1)           # (B, n_builders, n_cells, d_model)
         c_exp = cell_encoded.unsqueeze(1).expand(-1, n_builders, -1, -1)
         bc    = torch.cat([x_exp, c_exp], dim=-1)                    # (B, n_builders, n_cells, d_model*2)
 
         move_cell_logits = self.move_cell_head(bc).squeeze(-1)        # (B, n_builders, n_cells)
+        move_cell_logits = move_cell_logits.masked_fill(~moveable_cells, float('-inf'))
 
-        if moveable_cells is not None:
-            move_cell_logits = move_cell_logits.masked_fill(~moveable_cells, float('-inf'))
+        # Masking action logits based on available builders and buildings
+        can_move = (
+            available_builders.any(dim=-1)
+            & moveable_cells.any(dim=(1,2))
+        )
 
-            # if ALL cells are masked for a builder, that builder can't move
-            # if ALL builders can't move, mask the move action entirely
-            any_moveable = moveable_cells.any(dim=-1)        # (B, n_builders) — does builder have any valid cell?
-            any_builder_can_move = any_moveable.any(dim=-1)  # (B,) — can any builder move?
-            action_logits[~any_builder_can_move, 1] = float('-inf')
+        action_logits[~can_move, 1] = float("-inf")
 
-        # same for build
-        if buildable_cells is not None:
-            any_buildable = buildable_cells.any(dim=-1)          # (B, n_buildings)
-            any_building_can_build = any_buildable.any(dim=-1)   # (B,)
-            action_logits[~any_building_can_build, 2] = float('-inf')
+        can_build = (
+            available_buildings.any(dim=-1)
+            & buildable_cells.any(dim=(1,2))
+        )
 
+        action_logits[~can_build, 2] = float("-inf")
+
+        # Value head computation
         value = self.value_head(pooled)                               # (B, 1)
 
         return TensorDict({
@@ -146,14 +167,47 @@ class GameNetwork(nn.Module):
             "value":             value,              # (B, 1)
         })
 
+
     def _sample_actions(self, logits):
         B = logits["action_logits"].shape[0]
         device = logits["action_logits"].device
 
-        action = Categorical(
-            logits=logits["action_logits"]
-        ).sample()
+        action_logits = logits["action_logits"].clone()
 
+        # Safety: disable MOVE if no builder has a valid move
+        can_move = (
+            torch.isfinite(logits["move_cell_logits"])
+            .any(dim=-1)
+            &
+            torch.isfinite(logits["builder_logits"])
+        )
+        can_move = can_move.any(dim=-1)
+
+        action_logits[~can_move, 1] = float("-inf")
+
+        building_can_build = torch.isfinite(
+            logits["build_cell_logits"]
+        ).any(dim=-1)
+
+        can_building = torch.isfinite(
+            logits["building_logits"]
+        )
+
+        can_build = (
+            building_can_build
+            &
+            can_building
+        ).any(dim=-1)
+
+        action_logits[~can_build,2] = float("-inf")
+
+        invalid = torch.isneginf(action_logits).all(dim=-1)
+        action_logits[invalid] = 0.0
+
+
+        action = Categorical(
+            logits=action_logits
+        ).sample()
 
         builder = torch.zeros(
             B,
@@ -173,53 +227,89 @@ class GameNetwork(nn.Module):
             device=device
         )
 
-
         # MOVE
         move_idx = action == 1
 
         if move_idx.any():
 
+            builder_logits = logits["builder_logits"][move_idx].clone()
+
+            builder_can_move = torch.isfinite(
+                logits["move_cell_logits"][move_idx]
+            ).any(dim=-1)  # (N, builders)
+
+            builder_logits = builder_logits.masked_fill(
+                ~builder_can_move,
+                float("-inf")
+            )
+
+            # safety: if somehow no builder can move
+            no_valid_builder = (~builder_can_move).all(dim=-1)
+
+            if no_valid_builder.any():
+                raise RuntimeError(
+                    "MOVE selected but no valid builder exists"
+                )
+
             builder[move_idx] = Categorical(
-                logits=logits["builder_logits"][move_idx]
+                logits=builder_logits
             ).sample()
+
 
             selected = logits["move_cell_logits"][
                 move_idx,
                 builder[move_idx]
-            ]
+            ].clone()
 
-            all_masked = torch.isinf(selected).all(dim=-1, keepdim=True)
 
-            selected = selected.masked_fill(all_masked, 0.0)
+            # safety: no movable cells
+            no_valid_cell = torch.isneginf(selected).all(dim=-1)
+
+            if no_valid_cell.any():
+                selected[no_valid_cell] = 0.0
+
 
             cell[move_idx] = Categorical(
                 logits=selected
             ).sample()
 
-
+        # BUILD
         # BUILD
         build_idx = action == 2
 
         if build_idx.any():
 
+            building_logits = logits["building_logits"][build_idx].clone()
+
+            no_building = torch.isneginf(building_logits).all(dim=-1)
+
+            if no_building.any():
+                raise RuntimeError(
+                    "BUILD selected but no valid building exists"
+                )
+
             building[build_idx] = Categorical(
-                logits=logits["building_logits"][build_idx]
+                logits=building_logits
             ).sample()
+
 
             selected = logits["build_cell_logits"][
                 build_idx,
                 building[build_idx]
-            ]
+            ].clone()
 
-            all_masked = torch.isinf(selected).all(dim=-1, keepdim=True)
 
-            selected = selected.masked_fill(all_masked, 0.0)
+            no_valid_cell = torch.isneginf(selected).all(dim=-1)
 
-            sampled = Categorical(logits=selected).sample()
+            if no_valid_cell.any():
+                selected[no_valid_cell] = 0.0
 
-            cell[build_idx] = sampled
 
-        action_out = torch.stack(
+            cell[build_idx] = Categorical(
+                logits=selected
+            ).sample()
+
+        return torch.stack(
             [
                 action,
                 builder,
@@ -228,8 +318,6 @@ class GameNetwork(nn.Module):
             ],
             dim=-1
         )
-
-        return action_out
 
 
     def _compute_log_prob(self, logits: TensorDict, actions: torch.Tensor) -> torch.Tensor:
@@ -245,21 +333,24 @@ class GameNetwork(nn.Module):
         is_build = action == 2
 
         action_lp   = Categorical(logits=logits["action_logits"]).log_prob(action)
-        builder_lp  = Categorical(logits=logits["builder_logits"]).log_prob(builder)
 
-        all_masked_building = logits["building_logits"].isinf().all(dim=-1, keepdim=True)
+        all_masked_builder = logits["builder_logits"].isneginf().all(dim=-1, keepdim=True)
+        builder_logits = logits["builder_logits"].masked_fill(all_masked_builder, 0.0)
+        builder_lp  = Categorical(logits=builder_logits).log_prob(builder)
+
+        all_masked_building = logits["building_logits"].isneginf().all(dim=-1, keepdim=True)
         building_logits = logits["building_logits"].masked_fill(all_masked_building, 0.0)
         building_lp = Categorical(logits=building_logits).log_prob(building)
 
         # move cell log prob — guard against all -inf
         move_cell_logits = logits["move_cell_logits"][torch.arange(B), builder]
-        all_masked_move  = move_cell_logits.isinf().all(dim=-1, keepdim=True)
+        all_masked_move  = move_cell_logits.isneginf().all(dim=-1, keepdim=True)
         move_cell_logits = move_cell_logits.masked_fill(all_masked_move, 0.0)
         move_cell_lp     = Categorical(logits=move_cell_logits).log_prob(cell)
 
         # build cell log prob — guard against all -inf
         build_cell_logits = logits["build_cell_logits"][torch.arange(B), building]
-        all_masked_build  = build_cell_logits.isinf().all(dim=-1, keepdim=True)
+        all_masked_build  = build_cell_logits.isneginf().all(dim=-1, keepdim=True)
         build_cell_logits = build_cell_logits.masked_fill(all_masked_build, 0.0)
         build_cell_lp     = Categorical(logits=build_cell_logits).log_prob(cell)
 
