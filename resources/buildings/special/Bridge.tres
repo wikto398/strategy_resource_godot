@@ -36,12 +36,6 @@ metadata/_custom_type_script = "uid://dudv08mddwqxr"
 script = ExtResource("3_i35hv")
 name = "Bridge"
 icon = ExtResource("1_1166s")
-upkeep_cost = Dictionary[int, int]({
-0: 10,
-1: 0,
-2: 0,
-3: 5
-})
 build_cost = Dictionary[int, int]({
 0: 20,
 1: 10,

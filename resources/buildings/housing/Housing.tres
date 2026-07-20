@@ -13,5 +13,11 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 script = ExtResource("2_xk2ce")
 name = "Housing"
 icon = ExtResource("2_64ocr")
+build_cost = Dictionary[int, int]({
+0: 25,
+1: 25,
+2: 25,
+3: 25
+})
 conditions = Array[ExtResource("1_dk0ff")]([SubResource("Resource_c7686")])
 metadata/_custom_type_script = "uid://cmyrq5gwx7l1r"

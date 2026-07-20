@@ -28,11 +28,11 @@ produced_resource = 2
 production_rate = 5
 name = "Farm"
 icon = ExtResource("1_6w0or")
-upkeep_cost = Dictionary[int, int]({
-0: 0,
-1: 0,
-2: 0,
-3: 5
+build_cost = Dictionary[int, int]({
+0: 20,
+1: 20,
+2: 20,
+3: 20
 })
 conditions = Array[ExtResource("1_vqrbe")]([SubResource("Resource_mnhor"), SubResource("Resource_cbclp")])
 metadata/_custom_type_script = "uid://uegajtghb2hu"

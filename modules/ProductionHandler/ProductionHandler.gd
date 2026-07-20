@@ -81,9 +81,10 @@ func _on_production_building_finished(building: ProductionBuilding, field: Field
 	current_production[building.produced_resource] += production_increase
 
 func _update_current_deficit_duration(resource: Enums.TownResource) -> void:
-	if town_resources[resource] < 0 and current_production[resource] < 0:
+	if town_resources[resource] <= 0 and current_production[resource] <= 0:
 		DebugLogger.warning("Resource " + str(resource) + " is in deficit! Current amount: " + str(town_resources[resource]) + " Production: " + str(current_production[resource]))
 		current_deficit_duration[resource] += 1
+		# Global.add_to_reward.emit(-0.2)
 	else:
 		current_deficit_duration[resource] = 0
 		return

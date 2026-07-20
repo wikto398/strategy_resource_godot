@@ -8,6 +8,8 @@ class_name ObservationCollector extends ObservationCollectorInterface
 var time_penalty: float = 0.01
 var is_game_won: bool = false
 var done: bool = false
+var reward = 0.0
+var last_action: Array = []
 
 enum RewardMode {
     AFTER_SKIP,
@@ -16,15 +18,17 @@ enum RewardMode {
     FINAL_REWARD
 }
 
-var reward_mode: RewardMode = RewardMode.AFTER_SKIP
 
 func _ready() -> void:
     super._ready()
     Global.game_won.connect(_on_game_won)
     Global.game_lost.connect(_on_game_lost)
+    Global.add_to_reward.connect(_on_add_to_reward)
 
 func _reward() -> float:
-    var reward := -time_penalty
+    reward -= time_penalty
+
+    var reward_mode: RewardMode = _set_reward_mode(last_action)
 
     match reward_mode:
         RewardMode.AFTER_BUILD:
@@ -39,7 +43,11 @@ func _reward() -> float:
         RewardMode.FINAL_REWARD:
             reward += 100.0 if is_game_won else -100.0
 
-    return reward
+    DebugLogger.debug("Calculating reward for action: " + str(last_action) + ", reward mode: " + str(reward_mode) + ", reward: " + str(reward))
+
+    var current_reward = reward
+    reward = 0.0
+    return current_reward
 
 func _observation() -> Dictionary:
     return {
@@ -53,18 +61,26 @@ func _action_mask() -> Dictionary:
     var field_masks = _field_masks()
     var moveable_cells = _movable_cells()
     var available_builders = _available_builders()
-    return {"buildable_cells": field_masks, "available_buildings": available_buildings, "moveable_cells": moveable_cells}
+    return {"buildable_cells": field_masks, "available_buildings": available_buildings, "moveable_cells": moveable_cells, "available_builders": available_builders}
 
 func _field_masks() -> Array:
     var field_masks = []
+
     for building in ResourceDatabase.buildings:
         var current_field_building_masks = []
-        for field in field_grid.ordered_fields:
-            if build_handler.can_build_on_field(field, building):
-                current_field_building_masks.append(1)
-            else:
+
+        if not can_build(building):
+            for field in field_grid.ordered_fields:
                 current_field_building_masks.append(0)
+        else:
+            for field in field_grid.ordered_fields:
+                if build_handler.can_build_on_field(field, building):
+                    current_field_building_masks.append(1)
+                else:
+                    current_field_building_masks.append(0)
+
         field_masks.append(current_field_building_masks)
+
     return field_masks
 
 func _available_buildings() -> Array:
@@ -126,7 +142,7 @@ func can_build(building: Building) -> bool:
 func _available_builders() -> Array:
     var available_builders = []
     for builder in builder_controller.builders:
-        if builder.state_machine.current_state_name == "idle":
+        if builder.state_machine.current_state_name.to_lower() == "idle":
             available_builders.append(1)
         else:
             available_builders.append(0)
@@ -135,9 +151,46 @@ func _available_builders() -> Array:
     return available_builders
 
 func _move_reward() -> float:
-    var reward = 0.0
-    return reward
+    var additional_reward = 0.0
+    var move_target = last_action.get(3)
+    if move_target == null:
+        DebugLogger.error("Invalid move action: missing move target.")
+    if move_target != null:
+        var position: Vector2i = field_grid.flat_to_2d_index(move_target)
+        var field = field_grid.get_field_at(position)
+        if field == null:
+            DebugLogger.error("Invalid move action: unknown position %s." % position)
+        else:
+            if field.in_progress_building != null:
+                DebugLogger.debug("Builder moved to a field with an in-progress building. Rewarding additional points.")
+                additional_reward += 0.5
+            else:
+                DebugLogger.debug("Builder moved to a field without an in-progress building. Rewarding additional points.")
+                additional_reward += 0.2
+    return additional_reward
 
 func _build_reward() -> float:
-    var reward = 0.5
-    return reward
+    return 0.0
+
+func _skip_reward() -> float:
+    return 0.0
+
+func _set_reward_mode(action) -> RewardMode:
+    if action.size() == 0:
+        return RewardMode.AFTER_SKIP
+    var action_type: int = action.get(0)
+    if done:
+        return RewardMode.FINAL_REWARD
+    match action_type:
+        0:
+            return RewardMode.AFTER_SKIP
+        1:
+            return RewardMode.AFTER_MOVE
+        2:
+            return RewardMode.AFTER_BUILD
+        _:
+            return RewardMode.AFTER_SKIP
+
+func _on_add_to_reward(value: float) -> void:
+    DebugLogger.trace("Adding to reward: " + str(value))
+    reward += value

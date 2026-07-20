@@ -45,12 +45,6 @@ produced_resource = 1
 production_rate = 5
 name = "Mine"
 icon = ExtResource("1_qa0xw")
-upkeep_cost = Dictionary[int, int]({
-0: 0,
-1: 0,
-2: 0,
-3: 3
-})
 build_cost = Dictionary[int, int]({
 0: 40,
 1: 0,

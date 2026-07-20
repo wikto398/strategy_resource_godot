@@ -36,12 +36,6 @@ produced_resource = 3
 production_rate = 6
 name = "Timber Yard"
 icon = ExtResource("1_n0lty")
-upkeep_cost = Dictionary[int, int]({
-0: 4,
-1: 0,
-2: 0,
-3: 0
-})
 build_cost = Dictionary[int, int]({
 0: 50,
 1: 10,

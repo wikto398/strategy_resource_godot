@@ -88,24 +88,18 @@ class GameNetwork(nn.Module):
         building_logits = self.building_head(global_encoded)          # (B, n_buildings)
         building_logits = building_logits.masked_fill(~available_buildings, float('-inf'))
 
-        def check_nan(name, x):
-            if torch.isnan(x).any() or torch.isinf(x).any():
-                print(name, "BAD")
-                print(x)
-                raise RuntimeError(name)
-
         # Builders encoding
         builder_encoded = self.builder_encoder(builder_features)      # (B, builders, d_model)
 
-        attention_mask = ~available_builders.clone()
+        key_padding_mask = ~available_builders.clone()
         has_builder = available_builders.any(dim=-1)
         no_builders = ~has_builder
 
         if no_builders.any():
-            attention_mask[no_builders, 0] = False
+            key_padding_mask[no_builders, 0] = False
 
         # Attention mechanisms
-        x, _ = self.builder_to_builder_attention(builder_encoded, builder_encoded, builder_encoded, key_padding_mask=~attention_mask)
+        x, _ = self.builder_to_builder_attention(builder_encoded, builder_encoded, builder_encoded, key_padding_mask=key_padding_mask)
 
         x     = self.norm1(builder_encoded + x)
 
@@ -274,12 +268,18 @@ class GameNetwork(nn.Module):
             ).sample()
 
         # BUILD
-        # BUILD
         build_idx = action == 2
 
         if build_idx.any():
 
             building_logits = logits["building_logits"][build_idx].clone()
+
+            row_building_can_build = building_can_build[build_idx]  # (N, n_buildings)
+
+            building_logits = building_logits.masked_fill(
+                ~row_building_can_build,
+                float("-inf")
+            )
 
             no_building = torch.isneginf(building_logits).all(dim=-1)
 
@@ -302,7 +302,10 @@ class GameNetwork(nn.Module):
             no_valid_cell = torch.isneginf(selected).all(dim=-1)
 
             if no_valid_cell.any():
-                selected[no_valid_cell] = 0.0
+                raise RuntimeError(
+                    "BUILD: building has no valid cell despite building_can_build mask "
+                    "(this should be impossible — check build_cell_logits vs building_logits masks for inconsistency)"
+                )
 
 
             cell[build_idx] = Categorical(

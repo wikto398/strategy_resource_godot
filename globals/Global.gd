@@ -22,5 +22,10 @@ func reset_environment() -> void:
     win_conditions_met = 0
     for building in ResourceDatabase.buildings:
         building.already_built = false
+    GameData.reset()
+    Turn.reset()
     await get_tree().reload_current_scene()
     in_reset = false
+
+# AI related
+signal add_to_reward(value: float)
