@@ -5,9 +5,23 @@ from torch.distributions import Categorical
 
 
 class GameNetwork(nn.Module):
-    def __init__(self, n_cell_features, n_global_features, n_buildings, n_builder_features, d_model=256, n_heads=8):
+    def __init__(
+        self,
+        n_cell_features,
+        n_global_features,
+        n_buildings,
+        n_builder_features,
+        d_model=256,
+        n_heads=8,
+        grid_h=12,
+        grid_w=16,
+        build_spatial_ch=64,
+        build_cond_ch=16,
+    ):
         super().__init__()
         self.n_buildings = n_buildings
+        self.grid_h = grid_h
+        self.grid_w = grid_w
 
         self.cell_encoder = nn.Sequential(
             nn.Linear(n_cell_features, d_model),
@@ -35,7 +49,17 @@ class GameNetwork(nn.Module):
         self.builder_head = nn.Linear(d_model, 1)
         self.building_head = nn.Linear(d_model, n_buildings)
         self.move_cell_head = nn.Linear(d_model * 2, 1)
-        self.build_cell_head = nn.Linear(d_model * 3, 1)
+        self.build_cell_to_map = nn.Conv2d(d_model, build_spatial_ch, kernel_size=1)
+        self.build_building_to_cond = nn.Linear(d_model, build_cond_ch)
+        self.build_global_to_cond = nn.Linear(d_model, build_cond_ch)
+        build_in_ch = build_spatial_ch + 2 * build_cond_ch
+        self.build_cell_head = nn.Sequential(
+            nn.Conv2d(build_in_ch, build_spatial_ch, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(build_spatial_ch, build_spatial_ch // 2, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(build_spatial_ch // 2, 1, kernel_size=1),
+        )
         self.value_head = nn.Linear(d_model, 1)
 
     @staticmethod
@@ -77,14 +101,27 @@ class GameNetwork(nn.Module):
         cell_encoded   = self.cell_encoder(cell_features)              # (B, cells, d_model)
         global_encoded = self.global_encoder(global_features)          # (B, d_model)
 
+        H, W = self.grid_h, self.grid_w
+        if n_cells != H * W:
+            raise ValueError(f"n_cells={n_cells} != grid_h*grid_w={H * W}")
+
         bt = self.building_encoder(torch.arange(n_buildings, device=device))  # (n_buildings, d_model)
         bt = bt.unsqueeze(0).expand(B, -1, -1)  # (B, n_buildings, d_model)
 
-        g_exp = global_encoded[:, None, None, :].expand(B, n_buildings, n_cells, -1)
-        bt_exp = bt.unsqueeze(2).expand(-1, -1, n_cells, -1)
-        c_exp2 = cell_encoded.unsqueeze(1).expand(-1, self.n_buildings, -1, -1)
-        btc = torch.cat([bt_exp, c_exp2, g_exp], dim=-1)
-        build_cell_logits = self.build_cell_head(btc).squeeze(-1)
+        cell_map = cell_encoded.view(B, H, W, -1).permute(0, 3, 1, 2)  # (B, d_model, H, W)
+        cell_map = self.build_cell_to_map(cell_map)  # (B, c_cell, H, W)
+        cell_map = cell_map.unsqueeze(1).expand(-1, n_buildings, -1, -1, -1)  # (B, n_b, c_cell, H, W)
+
+        bt_cond = self.build_building_to_cond(bt)  # (B, n_b, c_cond)
+        bt_map = bt_cond.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, H, W)
+
+        g_cond = self.build_global_to_cond(global_encoded)  # (B, c_cond)
+        g_map = g_cond[:, None, :, None, None].expand(-1, n_buildings, -1, H, W)
+
+        build_in = torch.cat([cell_map, bt_map, g_map], dim=2)  # (B, n_b, C_in, H, W)
+        build_in = build_in.reshape(B * n_buildings, build_in.size(2), H, W)
+        build_cell_logits = self.build_cell_head(build_in).flatten(1)  # (B*n_b, H*W)
+        build_cell_logits = build_cell_logits.view(B, n_buildings, n_cells)
         build_cell_logits = build_cell_logits.masked_fill(~buildable_cells, float("-inf"))
 
         building_logits = self.building_head(global_encoded)

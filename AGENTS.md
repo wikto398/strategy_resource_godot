@@ -77,6 +77,7 @@ No GDScript test suite in-repo. No root CI.
 - Turn flow / win-loss: `Turn`, `Global.game_won` / `game_lost`, reward hooks via `Global.add_to_reward`
 - NN: `torch_files/GameNetwork/GameNetwork.py` (attention + multi-head); agent is `PPOAgent` with TensorDicts — network owns obs processing
 - Filename typo to remember: `rl_tools/rl/RLInitializer/RLIntializer.py` (imported as `RLInitializer`)
+- Training metrics hooks: `rl_tools/rl/Callback` (`Callback` ABC, `NoOpCallback`, `CallbackList`) passed as `PPOAgent(..., callback=...)`. Game-specific metrics live in `torch_files/callbacks/` (e.g. `StrategyMetricsCallback` logs action-type/building/builder/cell + rollout reward stats to TB/W&B via `agent.log` / `agent.log_histogram`). Subclass `Callback` and implement all abstract hooks for other games; compose with `CallbackList`.
 
 ## Conventions
 

@@ -12,7 +12,7 @@
 [ext_resource type="Script" uid="uid://26jv5di0g5o4" path="res://modules/Camera/Camera.gd" id="7_x5mob"]
 [ext_resource type="Script" uid="uid://b0c4ku07a4jq5" path="res://modules/ActionHandler/ActionHandler.gd" id="8_8hgnl"]
 [ext_resource type="Script" uid="uid://inlodswbcy0c" path="res://modules/ObservationCollector/ObservationCollector.gd" id="12_6dhxc"]
-[ext_resource type="Script" uid="uid://3or6qutytso1" path="res://godot_tools/EnvironmentConnector/EnvironmentConnector.gd" id="13_jo1q0"]
+[ext_resource type="Script" uid="uid://cmx0ystbe63ok" path="res://godot_tools/EnvironmentConnector/EnvironmentConnector.gd" id="13_jo1q0"]
 [ext_resource type="Script" uid="uid://cyaqqyggjbg8m" path="res://godot_tools/ReceiverInterface/UDPReceiver/UDPReceiver.gd" id="14_c7686"]
 [ext_resource type="Script" uid="uid://cylnxebl4k202" path="res://godot_tools/SenderInterface/UDPSender/UDPSender.gd" id="15_lp5vc"]
 [ext_resource type="Script" uid="uid://bde47ewa5ohcg" path="res://modules/ActionExecutor/ActionExecutor.gd" id="16_c7686"]
@@ -34,10 +34,10 @@ city_center = ExtResource("2_5y0dg")
 [node name="ProductionHandler" type="Node" parent="." unique_id=219689088]
 script = ExtResource("5_76dbn")
 town_resources = Dictionary[int, int]({
-0: 200,
-1: 200,
-2: 200,
-3: 200
+0: 500,
+1: 500,
+2: 500,
+3: 500
 })
 metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 
@@ -62,7 +62,6 @@ metadata/_custom_type_script = "uid://b0c4ku07a4jq5"
 
 [node name="EnvironmentConnector" type="Node" parent="." unique_id=415236294]
 script = ExtResource("13_jo1q0")
-metadata/_custom_type_script = "uid://3or6qutytso1"
 
 [node name="Receiver" type="Node" parent="EnvironmentConnector" unique_id=1759186796]
 script = ExtResource("14_c7686")
