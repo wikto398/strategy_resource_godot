@@ -30,47 +30,38 @@ class StrategyMetricsCallback(Callback):
         *,
         building_names: Sequence[str],
         action_type_names: Sequence[str] | None = None,
-        log_cell_histogram: bool = True,
+        n_builders: int = 5,
     ) -> None:
         super().__init__()
+        if n_builders <= 0:
+            raise ValueError(f"n_builders must be positive, got {n_builders}")
         self.building_names = list(building_names)
         self.action_type_names = list(action_type_names or DEFAULT_ACTION_TYPE_NAMES)
-        self.log_cell_histogram = log_cell_histogram
+        self.n_builders = n_builders
 
     def on_train_start(self) -> None:
         if self.agent is None:
             return
         if self.agent.tensorboard_writer is None:
             return
+        builder_tags = [
+            f"policy/builder_selection/builder_{i}" for i in range(self.n_builders)
+        ]
+        building_tags = [
+            f"policy/building_selection/{name}" for name in self.building_names
+        ]
+        action_tags = [
+            f"policy/action_selection/{name}" for name in self.action_type_names
+        ]
         self.agent.tensorboard_writer.add_custom_scalars(
             {
                 "Policy": {
-                    "Building selection": [
-                        "Multiline",
-                        [
-                            "policy/building_selection/Bridge",
-                            "policy/building_selection/CityCenter",
-                            "policy/building_selection/Farm",
-                            "policy/building_selection/Housing",
-                            "policy/building_selection/Mine",
-                            "policy/building_selection/Sawmill",
-                            "policy/building_selection/StoneWorks",
-                            "policy/building_selection/TimberYard",
-                            "policy/building_selection/TownHall",
-                        ],
-                    ],
-                    "Action selection": [
-                        "Multiline",
-                        [
-                            "policy/action_selection/next_turn",
-                            "policy/action_selection/move",
-                            "policy/action_selection/build",
-                        ],
-                    ],
+                    "Building selection": ["Multiline", building_tags],
+                    "Builder selection": ["Multiline", builder_tags],
+                    "Action selection": ["Multiline", action_tags],
                 }
             }
         )
-
 
     def on_train_end(self) -> None:
         pass
@@ -132,15 +123,18 @@ class StrategyMetricsCallback(Callback):
             )
 
         move_mask = types == ACTION_MOVE
-        if np.any(move_mask):
-            builders = flat_actions[move_mask, 1]
-            self.agent.log_histogram("actions/builder", builders)
-
-        if self.log_cell_histogram:
-            cell_mask = move_mask | build_mask
-            if np.any(cell_mask):
-                cells = flat_actions[cell_mask, 3]
-                self.agent.log_histogram("actions/cell", cells)
+        builders = (
+            flat_actions[move_mask, 1].astype(np.int64)
+            if np.any(move_mask)
+            else np.array([], dtype=np.int64)
+        )
+        builder_counts = Counter(builders.tolist())
+        builder_total = sum(builder_counts.values()) or 1
+        for builder_id in range(self.n_builders):
+            self.agent.log(
+                f"policy/builder_selection/builder_{builder_id}",
+                builder_counts[builder_id] / builder_total,
+            )
 
     def on_update_start(self, rollout: TensorDict) -> None:
         if self.agent is None:

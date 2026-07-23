@@ -6,6 +6,7 @@ const PROBABILITY_INNER_GRASS = [1, 6, 3]
 const STRUCTURE_PLACEMENT_PROBABILITY = 0.4
 
 var ordered_fields: Array[TerrainField] = []
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 signal unhighlight_all_fields
 signal update_visuals()
@@ -13,6 +14,7 @@ signal field_clicked(field: TerrainField)
 
 func _ready():
     super._ready()
+    _seed_rng()
     _add_empty_fields()
     generate_ca_map(3)
     _set_boundary_fields()
@@ -21,6 +23,14 @@ func _ready():
     update_visuals.emit()
     _center()
     _add_ordered_fields()
+
+func _seed_rng() -> void:
+    if Global.map_seed_valid:
+        _rng.seed = Global.map_seed
+        DebugLogger.info("TerrainFieldGrid: using map_seed=%d" % Global.map_seed)
+    else:
+        _rng.randomize()
+        DebugLogger.info("TerrainFieldGrid: randomized map seed=%d" % _rng.seed)
 
 func _add_ordered_fields():
     ordered_fields.clear()
@@ -33,11 +43,10 @@ func _add_ordered_fields():
 func _add_empty_fields():
     var field_scene = load("uid://bfrqdhxq3pe6x")
     var base_terrains = [Terrain.TerrainType.WATER, Terrain.TerrainType.GRASS]
-    var random = RandomNumberGenerator.new()
     for q in range(columns):
         for r in range(rows):
             var field := field_scene.instantiate() as TerrainField
-            field.terrain_type = base_terrains[random.rand_weighted(PROBABILITY_WATER_TO_GRASS)]
+            field.terrain_type = base_terrains[_rng.rand_weighted(PROBABILITY_WATER_TO_GRASS)]
             add_child(field)
             unhighlight_all_fields.connect(field._on_unhighlight)
             field.field_clicked.connect(_on_field_clicked)
@@ -132,22 +141,21 @@ func _fill_island_with_terrain():
             else:
                 non_borders.append(field)
 
-    var random = RandomNumberGenerator.new()
     var terrain_types = [Terrain.TerrainType.SAND, Terrain.TerrainType.GRASS, Terrain.TerrainType.MOUNTAIN]
     for border_field in borders:
-        border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_BORDER_GRASS)]
+        border_field.terrain_type = terrain_types[_rng.rand_weighted(PROBABILITY_BORDER_GRASS)]
 
     for non_border_field in non_borders:
-        non_border_field.terrain_type = terrain_types[random.rand_weighted(PROBABILITY_INNER_GRASS)]
+        non_border_field.terrain_type = terrain_types[_rng.rand_weighted(PROBABILITY_INNER_GRASS)]
 
 func _add_structures():
     var grouped_structures = _group_structures_by_terrain(ResourceDatabase.load_structures())
     DebugLogger.trace("Grouped structures by terrain: " + str(grouped_structures))
     for coords in fields:
         var field = fields[coords]
-        if field.terrain_type in grouped_structures and randf() < STRUCTURE_PLACEMENT_PROBABILITY:
+        if field.terrain_type in grouped_structures and _rng.randf() < STRUCTURE_PLACEMENT_PROBABILITY:
             var possible_structures = grouped_structures[field.terrain_type]
-            field.structure = possible_structures[randi() % possible_structures.size()]
+            field.structure = possible_structures[_rng.randi() % possible_structures.size()]
 
 func _group_structures_by_terrain(structures: Array[Structure]) -> Dictionary[Terrain.TerrainType, Array]:
     var grouped: Dictionary[Terrain.TerrainType, Array] = {}
