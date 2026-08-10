@@ -7,6 +7,10 @@
     "ruff-lsp": {
       "command": ["ruff", "server", "--preview"],
       "extensions": [".py", ".pyi"]
+    },
+    "gdscript": {
+      "command": ["npx", "opencode-godot-lsp"],
+      "extensions": [".gd", ".gdshader"]
     }
   }
 }

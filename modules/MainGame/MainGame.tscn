@@ -39,7 +39,7 @@ town_resources = Dictionary[int, int]({
 2: 500,
 3: 500
 })
-max_deficit_duration = 50
+max_deficit_duration = 20
 metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 
 [node name="BuildHandler" type="Node" parent="." unique_id=1262118961 node_paths=PackedStringArray("field_grid", "production_handler")]
