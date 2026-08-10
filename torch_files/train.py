@@ -1,3 +1,5 @@
+import subprocess
+
 import torch
 
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -11,6 +13,7 @@ from rl_tools.rl.RLInitializer import RLInitializer
 from rl_tools.rl.RLAgent.PolicyGradientAgent.PPOAgent import PPOAgent
 from torch_files.GameNetwork import GameNetwork
 from torch_files.callbacks import StrategyMetricsCallback
+from torch_files.normalizers import make_normalizers
 
 # Must match Godot ResourceDatabase recursive .tres load order under resources/buildings/
 BUILDING_NAMES = (
@@ -21,14 +24,16 @@ BUILDING_NAMES = (
     "TimberYard",
     "Mine",
     "Sawmill",
-    "Bridge",
+    "Dock",
     "TownHall",
+    "Workshop",
 )
 
 
 def main():
     args = RLArgsParser.parse_args()
     initializer = RLInitializer(args)
+    tensorboard_proc = None
 
     try:
         connectors = initializer.start_instances(
@@ -64,7 +69,17 @@ def main():
             build_cond_ch=16,
         )
         optimizer = torch.optim.Adam(network.parameters(), lr=3e-4)
-        summary_writer = SummaryWriter(log_dir=f"{initializer.log_path}/tensorboard")
+        log_dir = f"{initializer.log_path}/tensorboard"
+        summary_writer = SummaryWriter(log_dir=log_dir)
+        if args.tensorboard_port > 0:
+            tensorboard_proc = subprocess.Popen(
+                ["tensorboard", "--logdir", log_dir, "--port", str(args.tensorboard_port)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            initializer.main_logger.info(
+                f"TensorBoard serving at http://localhost:{args.tensorboard_port}"
+            )
         callbacks = [
             StrategyMetricsCallback(building_names=BUILDING_NAMES, n_builders=5),
             TimingCallback(),
@@ -106,13 +121,18 @@ def main():
             ]
         )
         callback = CallbackList(callbacks)
+        observation_normalizer, reward_normalizer = make_normalizers(
+            args, gamma=0.99
+        )
         agent = PPOAgent(
             network=network,
             optimizer=optimizer,
             envs=envs,
-            rollout_size=64,
+            rollout_size=256,
             tensorboard_writer=summary_writer,
             callback=callback,
+            observation_normalizer=observation_normalizer,
+            reward_normalizer=reward_normalizer,
         )
         if args.checkpoint:
             agent.load(
@@ -127,6 +147,8 @@ def main():
     except Exception as e:
         initializer.main_logger.error(f"Fatal error: {e}", exc_info=True)
     finally:
+        if tensorboard_proc is not None:
+            tensorboard_proc.terminate()
         initializer.stop_instances()
 
 

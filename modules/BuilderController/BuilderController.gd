@@ -4,6 +4,8 @@ signal builder_selected(builder: Builder)
 
 var field_grid: TerrainFieldGrid = null
 
+var city_center_position: Vector2i
+
 var builders: Array[Builder] = []
 var nearest_distances: Dictionary[Vector2i, int] = {}
 var nearest_builders: Dictionary[Vector2i, int] = {}
@@ -74,7 +76,7 @@ func move_builder_towards(builder: Builder, target_pos: Vector2i) -> void:
 		DebugLogger.error("Target field is null for position: " + str(target_pos))
 		return
 	builder.target_position = target_field
-	if builder.state_machine.current_state_name != "moving":
+	if builder.state_machine.current_state_name.to_lower() != "moving":
 		builder.state_machine.change_state("moving")
 	else:
 		builder.state_machine.current_state.a_star(builder.field, target_field)

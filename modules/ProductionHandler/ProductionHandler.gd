@@ -2,6 +2,8 @@ class_name ProductionHandler extends Node
 
 signal resources_updated(town_resources: Dictionary[Enums.TownResource, int])
 signal production_updated(current_production: Dictionary[Enums.TownResource, int])
+signal building_started(building: Building)
+signal building_completed(building: Building)
 
 @export var town_resources: Dictionary[Enums.TownResource, int] = {
 	Enums.TownResource.WOOD: 100,
@@ -43,10 +45,17 @@ func start_production(building: Building, field: Field) -> void:
 	DebugLogger.debug("Starting production of building: " + building.name)
 	for resource in building.build_cost.keys():
 		town_resources[resource] -= building.build_cost[resource]
+	var total_cost = 0
+	for resource in building.build_cost.values():
+		total_cost += resource
+	Global.add_to_reward.emit(min(2.0, 0.15 * total_cost / 100.0), "build_start")
 	building.building_started(field)
+	building_started.emit(building)
 	field.in_progress_building = building
 	resources_updated.emit(town_resources)
 	field.building_finished.connect(_on_building_finished)
+	field.work_in_progress_texture.show()
+	_update_upkeep_costs(building.upkeep_cost)
 	if building.build_time == 0:
 		field.finish_building()
 	elif field.unit is Builder:
@@ -62,10 +71,10 @@ func _on_building_finished(field: Field) -> void:
 	if in_progress_building:
 		if in_progress_building is ProductionBuilding:
 			_on_production_building_finished(in_progress_building, field)
-		_update_upkeep_costs(in_progress_building.upkeep_cost)
 		field.building = in_progress_building
 		field.in_progress_building = null
 		production_updated.emit(current_production)
+		building_completed.emit(in_progress_building)
 		field.building_finished.disconnect(_on_building_finished)
 	else:
 		DebugLogger.warning("No in_progress_building in progress to finish at field: " + str(field.grid_position))
@@ -82,15 +91,14 @@ func _on_production_building_finished(building: ProductionBuilding, field: Field
 
 func _update_current_deficit_duration(resource: Enums.TownResource) -> void:
 	if town_resources[resource] <= 0 and current_production[resource] <= 0:
-		DebugLogger.warning("Resource " + str(resource) + " is in deficit! Current amount: " + str(town_resources[resource]) + " Production: " + str(current_production[resource]))
+		DebugLogger.trace("Resource " + str(resource) + " is in deficit! Current amount: " + str(town_resources[resource]) + " Production: " + str(current_production[resource]))
 		current_deficit_duration[resource] += 1
-		# Global.add_to_reward.emit(-0.2)
 	else:
 		current_deficit_duration[resource] = 0
 		return
 
 	if current_deficit_duration[resource] >= max_deficit_duration:
-		DebugLogger.error("Resource " + str(resource) + " has been in deficit for too long!")
+		DebugLogger.info("Resource " + str(resource) + " has been in deficit for too long!")
 		Global.game_lost.emit()
 
 func _update_upkeep_costs(upkeep_change: Dictionary[Enums.TownResource, int]) -> void:

@@ -198,12 +198,4 @@ func observation() -> Array:
 func flat_to_2d_index(flat_index: int) -> Vector2i:
     var x = flat_index % columns
     var y = flat_index / columns
-    DebugLogger.info(
-        "flat=%d -> coord=%s actual=%s"
-        % [
-            flat_index,
-            Vector2i(x,y),
-            get_field_at(Vector2i(x, y)).grid_position if get_field_at(Vector2i(x, y)) != null else "null",
-        ]
-    )
     return Vector2i(x, y)

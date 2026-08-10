@@ -14,6 +14,7 @@ signal unit_moved_out()
 @onready var terrain: Sprite2D = $Elements/Terrain
 @onready var building_texture: Sprite2D = $Elements/Building
 @onready var structure_texture: Sprite2D = $Elements/Structure
+@onready var work_in_progress_texture: Sprite2D = $Elements/WorkInProgress
 
 var unit: Unit = null:
 	set(value):
@@ -33,8 +34,6 @@ var continent: int = 0
 @export var building: Building:
 	set(value):
 		building = value
-		if building:
-			building_texture.texture = building.icon
 @export var structure: Structure
 
 var build_bonus: Dictionary[Enums.TownResource, Array] = {}
@@ -43,7 +42,7 @@ var in_progress_building: Building = null:
 	set(value):
 		in_progress_building = value
 		if in_progress_building:
-			building_texture.texture = in_progress_building.wip_icon
+			building_texture.texture = in_progress_building.icon
 
 func _ready():
 	_set_texture()
@@ -98,6 +97,7 @@ func finish_building() -> void:
 		DebugLogger.debug("Finishing building: " + in_progress_building.name + " at field: " + str(grid_position))
 		in_progress_building.building_finished(self)
 		building_finished.emit(self)
+		work_in_progress_texture.hide()
 	else:
 		DebugLogger.warning("No building in progress to finish at field: " + str(grid_position))
 

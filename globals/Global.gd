@@ -5,7 +5,6 @@ signal game_won()
 
 var in_reset: bool = false
 var connected_to_trainer: bool = false
-## Map RNG seed from CLI (--seed=) or RESET:<seed>. Valid even when negative.
 var map_seed: int = 0
 var map_seed_valid: bool = false
 var win_conditions_met: int = 0:
@@ -36,4 +35,4 @@ func reset_environment() -> void:
     in_reset = false
 
 # AI related
-signal add_to_reward(value: float)
+signal add_to_reward(value: float, tag: String)

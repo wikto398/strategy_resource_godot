@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="SpecialBuilding" format=3 uid="uid://dee1iiicy3jcp"]
+
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_7i14g"]
+[ext_resource type="Script" uid="uid://bidslecsj6i8p" path="res://modules/Building/SpecialBuilding/SpecialBuilding.gd" id="2_1vt0b"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="2_sa3oy"]
+[ext_resource type="Script" uid="uid://c2l5tqqs2y3iu" path="res://modules/Special/Special.gd" id="3_3b44e"]
+[ext_resource type="Resource" uid="uid://dhwcqx2iu8xsm" path="res://resources/specials/BuilderAmountIncrease.tres" id="6_sa3oy"]
+[ext_resource type="Script" uid="uid://dbaqfsmn38e5s" path="res://modules/Special/WinConditionSpecial/WinConditionSpecial.gd" id="6_wfl7e"]
+
+[sub_resource type="Resource" id="Resource_xlpgl"]
+script = ExtResource("2_sa3oy")
+required_terrain = 1
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_a50y2"]
+script = ExtResource("2_sa3oy")
+required_terrain = 2
+should_be_true = false
+metadata/_custom_type_script = "uid://dcte2mefk2aqh"
+
+[sub_resource type="Resource" id="Resource_vgcsv"]
+script = ExtResource("6_wfl7e")
+metadata/_custom_type_script = "uid://dbaqfsmn38e5s"
+
+[resource]
+script = ExtResource("2_1vt0b")
+specials = Array[ExtResource("3_3b44e")]([SubResource("Resource_vgcsv"), ExtResource("6_sa3oy")])
+name = "Workshop"
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: -1
+})
+build_cost = Dictionary[int, int]({
+0: 1500,
+1: 1500,
+2: 1500,
+3: 1500
+})
+build_time = 10
+conditions = Array[ExtResource("1_7i14g")]([SubResource("Resource_xlpgl"), SubResource("Resource_a50y2")])
+unique = true
+metadata/_custom_type_script = "uid://bidslecsj6i8p"

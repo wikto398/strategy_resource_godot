@@ -1,15 +1,41 @@
 class_name ObservationCollector extends ObservationCollectorInterface
 
+const GAMMA: float = 0.99
+const STOCK_WARNING_THRESHOLD: float = 100.0
+const STOCK_WARNING_COEF: float = 0.05
+const DEFICIT_CAP: float = 10.0
+const PRODUCTION_PENALTY_CAP: float = 10.0
+const PRODUCTION_PENALTY_COEF: float = 0.05
+const ECONOMY_COEF: float = 0.05
+const PRODUCTIVE_BONUS: float = 0.15
+const FIRST_BUILD_BONUS: float = 1.0
+const WIN_PROGRESS_COEF: float = 0.002
+const POP_MILESTONES: Array = [4, 6, 8, 10]
+const PROD_MILESTONES: Array = [5, 10, 20, 30]
+
 @export var field_grid: TerrainFieldGrid
 @export var build_handler: BuildHandler
 @export var production_handler: ProductionHandler
 @export var builder_controller: BuilderController
+@export var action_executor: ActionExecutor
 
-var time_penalty: float = 0.01
 var is_game_won: bool = false
 var done: bool = false
 var reward = 0.0
 var last_action: Array = []
+
+const COMPONENT_KEYS: Array = ["time", "deficit", "production", "economy", "stock_warning", "milestones", "productive", "win_progress", "build_start", "build_finish", "first_build", "events", "move", "skip", "build", "terminal"]
+
+var episode_components: Dictionary = {}
+var pending_components: Dictionary = {}
+var _peak_total: float = 0.0
+var _phi_applied: float = 0.0
+var _completed_value: float = 0.0
+var _built_types: Dictionary = {}
+var _built_started: Dictionary = {}
+var _built_completed: Dictionary = {}
+var _pop_milestones: Dictionary = {}
+var _prod_milestones: Dictionary = {}
 
 enum RewardMode {
     AFTER_SKIP,
@@ -24,30 +50,89 @@ func _ready() -> void:
     Global.game_won.connect(_on_game_won)
     Global.game_lost.connect(_on_game_lost)
     Global.add_to_reward.connect(_on_add_to_reward)
+    if action_executor != null:
+        action_executor.action_executed.connect(_on_action_executed)
+    else:
+        DebugLogger.error("ObservationCollector requires an action_executor reference.")
+    if production_handler != null:
+        production_handler.building_started.connect(_on_building_started)
+        production_handler.building_completed.connect(_on_building_completed)
+    _peak_total = _total_resources()
+
+func _on_action_executed(action: Array) -> void:
+    last_action = action
+
+func _on_building_started(building: Building) -> void:
+    _built_started[building.name] = _built_started.get(building.name, 0) + 1
+
+func _on_building_completed(building: Building) -> void:
+    _built_completed[building.name] = _built_completed.get(building.name, 0) + 1
+    var total_cost = 0
+    for resource in building.build_cost.values():
+        total_cost += resource
+    _completed_value += total_cost
+    var first = not _built_types.has(building.name)
+    _built_types[building.name] = true
+    if first:
+        _on_add_to_reward(FIRST_BUILD_BONUS, "first_build")
 
 func _reward() -> float:
-    reward -= time_penalty
-
+    var event_total = reward
+    reward = 0.0
+    var pending = pending_components.duplicate()
+    pending_components.clear()
+    var total = event_total
     var reward_mode: RewardMode = _set_reward_mode(last_action)
+    var components: Dictionary = _empty_components()
+    for tag in pending:
+        if COMPONENT_KEYS.has(tag):
+            components[tag] = components[tag] + pending[tag]
 
     match reward_mode:
-        RewardMode.AFTER_BUILD:
-            reward += _build_reward()
-
-        RewardMode.AFTER_MOVE:
-            reward += _move_reward()
+        RewardMode.FINAL_REWARD:
+            var terminal = _result_score()
+            total += terminal
+            components["terminal"] = terminal
 
         RewardMode.AFTER_SKIP:
-            reward -= 0.02
+            if not last_action.is_empty():
+                var skip = _skip_reward()
+                var time = _time_penalty()
+                var deficit = _deficit_penalty()
+                var production = _production_penalty()
+                var economy = _economy_reward()
+                var stock_warning = _stock_warning()
+                var milestones = _milestones()
+                var productive = _productive_turn()
+                var win_progress = _win_progress()
+                total += skip + time + deficit + production + economy + stock_warning + milestones + productive + win_progress
+                components["skip"] = skip
+                components["time"] = time
+                components["deficit"] = deficit
+                components["production"] = production
+                components["economy"] = economy
+                components["stock_warning"] = stock_warning
+                components["milestones"] = milestones
+                components["productive"] = productive
+                components["win_progress"] = win_progress
 
-        RewardMode.FINAL_REWARD:
-            reward += 100.0 if is_game_won else -100.0
+        RewardMode.AFTER_MOVE:
+            var move = _move_reward()
+            total += move
+            components["move"] = move
 
-    DebugLogger.debug("Calculating reward for action: " + str(last_action) + ", reward mode: " + str(reward_mode) + ", reward: " + str(reward))
+        RewardMode.AFTER_BUILD:
+            var build = _build_reward()
+            total += build
+            components["build"] = build
 
-    var current_reward = reward
-    reward = 0.0
-    return current_reward
+    _accumulate_episode(components)
+
+    DebugLogger.debug("Calculating reward for action: " + str(last_action) + ", reward mode: " + str(reward_mode) + ", reward: " + str(total))
+    if done:
+        _log_episode_breakdown()
+
+    return total
 
 func _observation() -> Dictionary:
     return {
@@ -134,8 +219,26 @@ func _on_game_lost() -> void:
 func _done() -> bool:
     return done
 
+func _info() -> Dictionary:
+    var info: Dictionary = {
+        "won": is_game_won,
+        "lost": done and not is_game_won,
+    }
+    if done:
+        info["turns"] = Turn.turn
+        info["population"] = GameData.population
+        info["working_population"] = GameData.working_population
+        info["total_resources"] = _total_resources()
+        info["production"] = production_handler.current_production.values()
+        info["buildings_started"] = _built_started.duplicate()
+        info["buildings_completed"] = _built_completed.duplicate()
+        info["reward_breakdown"] = episode_components.duplicate()
+    return info
+
 func can_build(building: Building) -> bool:
     if building.already_built:
+        return false
+    if building is ProductionBuilding and GameData.population <= GameData.working_population:
         return false
     return production_handler.can_afford(building.build_cost)
 
@@ -153,35 +256,97 @@ func _available_builders() -> Array:
 func _move_reward() -> float:
     var additional_reward = 0.0
     var move_target = last_action.get(3)
-    if move_target == null:
-        DebugLogger.error("Invalid move action: missing move target.")
     if move_target != null:
         var position: Vector2i = field_grid.flat_to_2d_index(move_target)
         var field = field_grid.get_field_at(position)
-        if field == null:
-            DebugLogger.error("Invalid move action: unknown position %s." % position)
-        else:
+        if field != null:
             if field.in_progress_building != null:
                 DebugLogger.debug("Builder moved to a field with an in-progress building. Rewarding additional points.")
-                additional_reward += 0.5
-            else:
-                DebugLogger.debug("Builder moved to a field without an in-progress building. Rewarding additional points.")
                 additional_reward += 0.2
+            elif _is_buildable_destination(field):
+                DebugLogger.debug("Builder moved to a buildable field. Rewarding additional points.")
+                additional_reward += 0.1
     return additional_reward
 
+func _is_buildable_destination(field: Field) -> bool:
+    for building in ResourceDatabase.buildings:
+        if can_build(building) and build_handler.can_build_on_field(field, building):
+            return true
+    return false
+
 func _build_reward() -> float:
-    return 0.0
+    var additional_reward = 0.0
+    return additional_reward
 
 func _skip_reward() -> float:
-    return 0.0
+    return -0.05
+
+func _economy_reward() -> float:
+    var reward_value = 0.0
+    for production in production_handler.current_production.values():
+        if production > 0:
+            reward_value += production * ECONOMY_COEF
+    return reward_value
+
+func _stock_warning() -> float:
+    var penalty = 0.0
+    for resource in production_handler.town_resources.keys():
+        var stock = production_handler.town_resources[resource]
+        var shortfall = max(0.0, 1.0 - stock / STOCK_WARNING_THRESHOLD)
+        penalty -= STOCK_WARNING_COEF * min(3.0, shortfall)
+    return penalty
+
+func _milestones() -> float:
+    var reward_value = 0.0
+    var pop = GameData.population
+    for level in POP_MILESTONES:
+        if pop >= level and not _pop_milestones.has(level):
+            _pop_milestones[level] = true
+            reward_value += 1.0
+    var net_production = 0
+    for production in production_handler.current_production.values():
+        net_production += production
+    for level in PROD_MILESTONES:
+        if net_production >= level and not _prod_milestones.has(level):
+            _prod_milestones[level] = true
+            reward_value += 1.0
+    var total = _total_resources()
+    if total > _peak_total:
+        reward_value += 0.02 * (total - _peak_total)
+        _peak_total = total
+    return reward_value
+
+func _productive_turn() -> float:
+    var productive = false
+    for builder in builder_controller.builders:
+        if builder.state_machine.current_state_name.to_lower() == "building":
+            productive = true
+            break
+    if not productive:
+        for production in production_handler.current_production.values():
+            if production > 0:
+                productive = true
+                break
+    return PRODUCTIVE_BONUS if productive else 0.0
+
+func _win_progress() -> float:
+    var phi = WIN_PROGRESS_COEF * _completed_value
+    var reward_value = GAMMA * phi - _phi_applied
+    _phi_applied = phi
+    return reward_value
+
+func _total_resources() -> float:
+    var total = 0.0
+    for resource in production_handler.town_resources.values():
+        total += resource
+    return total
 
 func _set_reward_mode(action) -> RewardMode:
-    if action.size() == 0:
-        return RewardMode.AFTER_SKIP
-    var action_type: int = action.get(0)
     if done:
         return RewardMode.FINAL_REWARD
-    match action_type:
+    if action.size() == 0:
+        return RewardMode.AFTER_SKIP
+    match action.get(0):
         0:
             return RewardMode.AFTER_SKIP
         1:
@@ -191,6 +356,74 @@ func _set_reward_mode(action) -> RewardMode:
         _:
             return RewardMode.AFTER_SKIP
 
-func _on_add_to_reward(value: float) -> void:
-    DebugLogger.trace("Adding to reward: " + str(value))
+func _on_add_to_reward(value: float, tag: String = "events") -> void:
+    DebugLogger.trace("Adding to reward: " + str(value) + " (" + tag + ")")
     reward += value
+    pending_components[tag] = pending_components.get(tag, 0.0) + value
+
+func _result_score() -> float:
+    var score = 10.0 if is_game_won else -10.0
+    score += _production_bonus()
+    score += _progress_bonus()
+    DebugLogger.debug("Final score calculated: " + str(score))
+
+    return score
+
+func _progress_bonus() -> float:
+    var score = 0.0
+    score += GameData.population * 0.1
+    score += GameData.working_population * 0.1
+    return score
+
+func _production_bonus() -> float:
+    var score = 0.0
+    for production in production_handler.current_production.values():
+        score += production * 0.1
+    return score
+
+func _deficit_penalty() -> float:
+    var penalty = 0.0
+    for resource in production_handler.town_resources.keys():
+        if production_handler.town_resources[resource] <= 0:
+            penalty -= 0.1 * min(DEFICIT_CAP, production_handler.current_deficit_duration[resource])
+    DebugLogger.debug("Deficit penalty calculated: " + str(penalty))
+    return penalty
+
+func _production_penalty() -> float:
+    var penalty = 0.0
+    for resource in production_handler.current_production.keys():
+        if production_handler.current_production[resource] <= 0:
+            penalty -= PRODUCTION_PENALTY_COEF * min(PRODUCTION_PENALTY_CAP, -production_handler.current_production[resource])
+    DebugLogger.debug("Production penalty calculated: " + str(penalty))
+    return penalty
+
+func _time_penalty() -> float:
+    var time_penalty = -0.01
+    return time_penalty
+
+func _empty_components() -> Dictionary:
+    var components = {}
+    for key in COMPONENT_KEYS:
+        components[key] = 0.0
+    return components
+
+func _accumulate_episode(components: Dictionary) -> void:
+    for key in COMPONENT_KEYS:
+        episode_components[key] = episode_components.get(key, 0.0) + components[key]
+
+func _log_episode_breakdown() -> void:
+    var result = "WON" if is_game_won else "LOST"
+    DebugLogger.info(
+        "Episode ended (%s). Turns: %d, Pop: %d/%d, Resources: %d, Production: %s, Started: %s, Completed: %s. Reward breakdown: %s"
+        % [
+            result,
+            Turn.turn,
+            GameData.population,
+            GameData.working_population,
+            int(_total_resources()),
+            str(production_handler.current_production),
+            str(_built_started),
+            str(_built_completed),
+            str(episode_components),
+        ]
+    )

@@ -39,6 +39,7 @@ town_resources = Dictionary[int, int]({
 2: 500,
 3: 500
 })
+max_deficit_duration = 50
 metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 
 [node name="BuildHandler" type="Node" parent="." unique_id=1262118961 node_paths=PackedStringArray("field_grid", "production_handler")]
@@ -69,12 +70,13 @@ script = ExtResource("14_c7686")
 [node name="Sender" type="Node" parent="EnvironmentConnector" unique_id=2144692131]
 script = ExtResource("15_lp5vc")
 
-[node name="ObservationCollector" type="Node" parent="EnvironmentConnector" unique_id=1069008489 node_paths=PackedStringArray("field_grid", "build_handler", "production_handler", "builder_controller")]
+[node name="ObservationCollector" type="Node" parent="EnvironmentConnector" unique_id=1069008489 node_paths=PackedStringArray("field_grid", "build_handler", "production_handler", "builder_controller", "action_executor")]
 script = ExtResource("12_6dhxc")
 field_grid = NodePath("../../TerrainFieldGrid")
 build_handler = NodePath("../../BuildHandler")
 production_handler = NodePath("../../ProductionHandler")
 builder_controller = NodePath("../../BuilderController")
+action_executor = NodePath("../ActionExecutor")
 metadata/_custom_type_script = "uid://inlodswbcy0c"
 
 [node name="ActionExecutor" type="Node" parent="EnvironmentConnector" unique_id=984220404 node_paths=PackedStringArray("build_handler", "field_grid", "builder_controller")]

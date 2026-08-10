@@ -6,7 +6,6 @@ signal remove_from_selector(building: Building)
 @export var name: String = ""
 @export var description: String = ""
 @export var icon: Texture2D
-@export var wip_icon: Texture2D
 @export var upkeep_cost: Dictionary[Enums.TownResource, int] = {
 	Enums.TownResource.WOOD: 0,
 	Enums.TownResource.STONE: 0,

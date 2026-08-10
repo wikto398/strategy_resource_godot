@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="SetGameDataVariableSpecial" format=3 uid="uid://dp2i2ldexim5g"]
+
+[ext_resource type="Script" uid="uid://06ksg7cg6i4g" path="res://modules/Special/SetGameDataVariableSpecial/SetGameDataVariableSpecial.gd" id="1_x9f2e"]
+
+[resource]
+script = ExtResource("1_x9f2e")
+variable_name = "builders_walk_on_water"
+value = true
+metadata/_custom_type_script = "uid://06ksg7cg6i4g"

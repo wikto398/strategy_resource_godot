@@ -1,12 +1,12 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://cqa5qmffn43l3"]
 
-[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_6w0or"]
 [ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_vqrbe"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_6w0or"]
 [ext_resource type="Script" uid="uid://ds8gsat3raw5r" path="res://modules/Building/conditions/RequiredStructureCondition/RequiredStructureCondition.gd" id="3_pejx3"]
 [ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="4_hhlo7"]
 [ext_resource type="Resource" uid="uid://b0caqrygjkejx" path="res://resources/structures/Lake.tres" id="4_jkltr"]
 [ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="5_afcms"]
+[ext_resource type="Texture2D" uid="uid://1oqq3ls63lr7" path="res://assets/buildings/farm.png" id="6_vqrbe"]
 
 [sub_resource type="Resource" id="Resource_hum71"]
 script = ExtResource("3_pejx3")
@@ -25,9 +25,15 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 [resource]
 script = ExtResource("3_6w0or")
 produced_resource = 2
-production_rate = 5
+production_rate = 10
 name = "Farm"
-icon = ExtResource("1_6w0or")
+icon = ExtResource("6_vqrbe")
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: 1
+})
 build_cost = Dictionary[int, int]({
 0: 20,
 1: 20,

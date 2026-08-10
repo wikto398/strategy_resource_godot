@@ -57,7 +57,7 @@ No GDScript test suite in-repo. No root CI.
 - Transport: **UDP localhost**. Defaults in `rl_tools/utils/config.py`: obs ports `5000+id`, action ports `5500+id`, `INSTANCES=2`
 - Godot reads CLI via autoload `ArgsParser`: `action_receiver_port`, `observation_receiver_port`, `python_host`, `godot_host`, `log_level`, `log_to_file`
 - Handshake: env → `ENV_READY` → trainer `TRAINER_READY` → env `TRAINER_READY_ACK` → trainer `START_TRAINING`
-- Observations: MessagePack dict `{observation, action_mask, reward, done}` (`ObservationCollector` + `Messagepack.encode`)
+- Observations: MessagePack dict `{observation, action_mask, reward, done, info}` (`ObservationCollector` + `Messagepack.encode`); `info` carries `{won, lost}` and, on the `done` step, an episode summary (`turns`, `population`, `working_population`, `total_resources`, `production`, `buildings_started`, `buildings_completed`, `reward_breakdown`) consumed by eval/play metrics
 - Actions: raw byte list via `bytearray(action)` — **not** msgpack. Layout handled by `ActionExecutor`:
   - `0` next turn
   - `1, builder_id, _, cell_flat` move

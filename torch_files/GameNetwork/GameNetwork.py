@@ -61,6 +61,7 @@ class GameNetwork(nn.Module):
             nn.Conv2d(build_spatial_ch // 2, 1, kernel_size=1),
         )
         self.value_head = nn.Linear(d_model, 1)
+        self.deterministic = False
 
     @staticmethod
     def _safe_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -184,12 +185,17 @@ class GameNetwork(nn.Module):
             "value":             value,
         })
 
+    def _choose(self, logits: torch.Tensor) -> torch.Tensor:
+        if self.deterministic:
+            return logits.argmax(dim=-1)
+        return self._categorical(logits).sample()
+
     def _sample_actions(self, logits):
         B = logits["action_logits"].shape[0]
         device = logits["action_logits"].device
 
         # Logits already carry consistent masks from _get_logits.
-        action = self._categorical(logits["action_logits"]).sample()
+        action = self._choose(logits["action_logits"])
 
         builder = torch.zeros(B, dtype=torch.long, device=device)
         building = torch.zeros(B, dtype=torch.long, device=device)
@@ -198,16 +204,16 @@ class GameNetwork(nn.Module):
         move_idx = action == 1
         if move_idx.any():
             builder_logits = logits["builder_logits"][move_idx]
-            builder[move_idx] = self._categorical(builder_logits).sample()
+            builder[move_idx] = self._choose(builder_logits)
             selected = logits["move_cell_logits"][move_idx, builder[move_idx]]
-            cell[move_idx] = self._categorical(selected).sample()
+            cell[move_idx] = self._choose(selected)
 
         build_idx = action == 2
         if build_idx.any():
             building_logits = logits["building_logits"][build_idx]
-            building[build_idx] = self._categorical(building_logits).sample()
+            building[build_idx] = self._choose(building_logits)
             selected = logits["build_cell_logits"][build_idx, building[build_idx]]
-            cell[build_idx] = self._categorical(selected).sample()
+            cell[build_idx] = self._choose(selected)
 
         return torch.stack([action, builder, building, cell], dim=-1)
 

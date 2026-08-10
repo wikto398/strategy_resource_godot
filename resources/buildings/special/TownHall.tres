@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://c2l5tqqs2y3iu" path="res://modules/Special/Special.gd" id="3_y2xll"]
 [ext_resource type="Script" uid="uid://dbaqfsmn38e5s" path="res://modules/Special/WinConditionSpecial/WinConditionSpecial.gd" id="4_criio"]
 [ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="4_hpwba"]
+[ext_resource type="Texture2D" uid="uid://be8gmaqxthgvp" path="res://assets/buildings/town_hall.png" id="5_0apyx"]
 
 [sub_resource type="Resource" id="Resource_rp28n"]
 script = ExtResource("3_0apyx")
@@ -25,11 +26,18 @@ metadata/_custom_type_script = "uid://dbaqfsmn38e5s"
 [resource]
 script = ExtResource("2_criio")
 specials = Array[ExtResource("3_y2xll")]([SubResource("Resource_y2xll")])
+icon = ExtResource("5_0apyx")
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: 1
+})
 build_cost = Dictionary[int, int]({
-0: 1000,
-1: 1000,
-2: 1000,
-3: 1000
+0: 5000,
+1: 5000,
+2: 5000,
+3: 5000
 })
 conditions = Array[ExtResource("1_criio")]([SubResource("Resource_g62pl")])
 unique = true

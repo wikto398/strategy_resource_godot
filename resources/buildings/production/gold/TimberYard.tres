@@ -1,12 +1,12 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://b78ct0ym6o6bj"]
 
 [ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_kp00f"]
-[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_n0lty"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="2_n0lty"]
 [ext_resource type="Script" uid="uid://ddts8j2vij1ne" path="res://modules/Building/conditions/RequiredBuildingCondition/RequiredBuildingCondition.gd" id="3_crsrj"]
 [ext_resource type="Resource" uid="uid://b8pdwkckajd6n" path="res://resources/buildings/production/wood/Sawmill.tres" id="3_ktgjw"]
 [ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="4_s3axb"]
 [ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="5_1ebb4"]
+[ext_resource type="Texture2D" uid="uid://bi2r2wq871cy4" path="res://assets/buildings/timberyard.png" id="6_kp00f"]
 
 [sub_resource type="Resource" id="Resource_0pppd"]
 script = ExtResource("3_crsrj")
@@ -33,9 +33,15 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 [resource]
 script = ExtResource("2_n0lty")
 produced_resource = 3
-production_rate = 6
+production_rate = 12
 name = "Timber Yard"
-icon = ExtResource("1_n0lty")
+icon = ExtResource("6_kp00f")
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: 1
+})
 build_cost = Dictionary[int, int]({
 0: 50,
 1: 10,

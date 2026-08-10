@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c67u7ttrjm27s" path="res://modules/TerrainField/TerrainField.gd" id="1_s74be"]
 [ext_resource type="Texture2D" uid="uid://w2uiwwy38hmo" path="res://assets/terrain/grass/grass_01.png" id="2_kbhsu"]
+[ext_resource type="Texture2D" uid="uid://8408q8j2qgb3" path="res://assets/buildings/work_in_progress.png" id="3_kbhsu"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o06qu"]
 radius = 20.0
@@ -20,6 +21,10 @@ texture = ExtResource("2_kbhsu")
 
 [node name="Building" type="Sprite2D" parent="Elements" unique_id=234984237]
 use_parent_material = true
+
+[node name="WorkInProgress" type="Sprite2D" parent="Elements" unique_id=1906856417]
+visible = false
+texture = ExtResource("3_kbhsu")
 
 [node name="Area2D" type="Area2D" parent="." unique_id=600362005]
 

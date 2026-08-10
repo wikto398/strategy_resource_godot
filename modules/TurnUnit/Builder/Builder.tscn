@@ -5,21 +5,10 @@
 [ext_resource type="Script" uid="uid://dnakl0ti110la" path="res://godot_tools/StateMachine/SignalStateMachine/SignalStateMachine.gd" id="3_o8waa"]
 [ext_resource type="Script" uid="uid://cekn048krc6wi" path="res://modules/TurnUnit/states/Idle/Idle.gd" id="4_q1cj1"]
 [ext_resource type="Script" uid="uid://blnwvsaifo7uo" path="res://modules/TurnUnit/states/Moving/Moving.gd" id="5_w15ki"]
-[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="6_1nhd0"]
+[ext_resource type="Resource" uid="uid://dpnbhmrwl1qro" path="res://resources/conditions/movement/DefaultMovementCondition.tres" id="6_ad0ea"]
 [ext_resource type="Script" uid="uid://17bfiqsmsjtn" path="res://modules/TurnUnit/states/BuildingState/BuildingState.gd" id="6_af05w"]
-[ext_resource type="Script" uid="uid://bchq68yi22wf0" path="res://modules/TurnUnit/conditions/FieldIsWalkableCondition/FieldIsWalkableCondition.gd" id="7_2qcfj"]
-[ext_resource type="Script" uid="uid://d3xkl3ulov86m" path="res://godot_tools/Condition/ANDCondition/ANDCondition.gd" id="7_bvh6h"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wrokc"]
-
-[sub_resource type="Resource" id="Resource_6ki6r"]
-script = ExtResource("7_2qcfj")
-metadata/_custom_type_script = "uid://bchq68yi22wf0"
-
-[sub_resource type="Resource" id="Resource_2qcfj"]
-script = ExtResource("7_bvh6h")
-conditions = Array[ExtResource("6_1nhd0")]([SubResource("Resource_6ki6r")])
-metadata/_custom_type_script = "uid://d3xkl3ulov86m"
 
 [node name="Builder" type="Node2D" unique_id=1311362941]
 script = ExtResource("1_n7cvv")
@@ -46,7 +35,7 @@ metadata/_custom_type_script = "uid://cekn048krc6wi"
 
 [node name="Moving" type="Node" parent="StateMachine" unique_id=1772693657]
 script = ExtResource("5_w15ki")
-condition = SubResource("Resource_2qcfj")
+condition = ExtResource("6_ad0ea")
 metadata/_custom_type_script = "uid://blnwvsaifo7uo"
 
 [node name="Building" type="Node" parent="StateMachine" unique_id=2128169271]

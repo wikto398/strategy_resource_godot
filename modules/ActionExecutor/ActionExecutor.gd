@@ -1,5 +1,7 @@
 class_name ActionExecutor extends ActionExecutorInterface
 
+signal action_executed(action: Array)
+
 @export var build_handler: BuildHandler
 @export var field_grid: TerrainFieldGrid
 @export var builder_controller: BuilderController
@@ -22,6 +24,8 @@ func _parse_action(action: Array):
             _build_structure(action)
         _:
             DebugLogger.error("Unknown action type: %d" % action_type)
+            return
+    action_executed.emit(action)
 
 func _build_structure(action: Array):
     var building_type: int = action.get(2)

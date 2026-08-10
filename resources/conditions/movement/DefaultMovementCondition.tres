@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ANDCondition" format=3 uid="uid://dpnbhmrwl1qro"]
+
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_g7anx"]
+[ext_resource type="Script" uid="uid://d3xkl3ulov86m" path="res://godot_tools/Condition/ANDCondition/ANDCondition.gd" id="2_bk821"]
+[ext_resource type="Script" uid="uid://bchq68yi22wf0" path="res://modules/TurnUnit/conditions/FieldIsWalkableCondition/FieldIsWalkableCondition.gd" id="2_js3im"]
+
+[sub_resource type="Resource" id="Resource_js3im"]
+script = ExtResource("2_js3im")
+metadata/_custom_type_script = "uid://bchq68yi22wf0"
+
+[resource]
+script = ExtResource("2_bk821")
+conditions = Array[ExtResource("1_g7anx")]([SubResource("Resource_js3im")])
+metadata/_custom_type_script = "uid://d3xkl3ulov86m"

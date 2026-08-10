@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="IncreaseGameDataVariableSpecial" format=3 uid="uid://dhwcqx2iu8xsm"]
+
+[ext_resource type="Script" uid="uid://b7lkr5nfn7bog" path="res://modules/Special/IncreaseGameDataVariableSpecial/IncreaseGameDataVariableSpecial.gd" id="1_suebf"]
+
+[resource]
+script = ExtResource("1_suebf")
+variable_name = "current_builders"
+metadata/_custom_type_script = "uid://b7lkr5nfn7bog"

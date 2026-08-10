@@ -44,6 +44,7 @@ func _connect_ui_signals() -> void:
 
 func _setup_builder_controller(field: Field) -> void:
 	builder_controller.field_grid = field_grid
+	builder_controller.city_center_position = field.grid_position
 	var neareast_walkable_fields = field_grid.get_nearest_walkable_fields(field.grid_position, 3)
 	for i in range(3):
 		var builder = BUILDER_SCENE.instantiate() as Builder
@@ -51,6 +52,8 @@ func _setup_builder_controller(field: Field) -> void:
 		units_node.add_child(builder)
 		DebugLogger.trace("Added builder at position: " + str(builder.field.grid_position) + " with global position: " + str(builder.global_position))
 		builder_controller.add_builder(builder)
+
+	GameData.builder_added.connect(_on_builder_added)
 
 func _setup_action_handler() -> void:
 	action_handler.setup(build_handler, production_handler, field_grid, building_selector, builder_controller)
@@ -78,3 +81,11 @@ func _disable_ui_if_headless() -> void:
 	if DisplayServer.get_name() == "headless":
 		DebugLogger.info("Running in headless mode, disabling UI.")
 		ui.queue_free()
+
+func _on_builder_added() -> void:
+	var new_builder = BUILDER_SCENE.instantiate() as Builder
+	var field = field_grid.get_field_at(builder_controller.city_center_position)
+	new_builder.field = field
+	units_node.add_child(new_builder)
+	DebugLogger.trace("A new builder has been added at position: " + str(new_builder.field.grid_position))
+	builder_controller.add_builder(new_builder)

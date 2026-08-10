@@ -1,12 +1,12 @@
 [gd_resource type="Resource" script_class="ProductionBuilding" format=3 uid="uid://bv2jtfore85bm"]
 
-[ext_resource type="Texture2D" uid="uid://d4aplu05kla2u" path="res://assets/buildings/sawmill.png" id="1_frsfv"]
 [ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_itncx"]
 [ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="2_frsfv"]
 [ext_resource type="Resource" uid="uid://bi30hqqyuhghq" path="res://resources/buildings/production/stone/Mine.tres" id="2_vx4au"]
 [ext_resource type="Script" uid="uid://ddts8j2vij1ne" path="res://modules/Building/conditions/RequiredBuildingCondition/RequiredBuildingCondition.gd" id="3_a20ak"]
 [ext_resource type="Script" uid="uid://uegajtghb2hu" path="res://modules/Building/ProductionBuilding/ProductionBuilding.gd" id="3_frsfv"]
 [ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="4_3r5wf"]
+[ext_resource type="Texture2D" uid="uid://bxruph0cwmhnq" path="res://assets/buildings/stone_works.png" id="6_vx4au"]
 
 [sub_resource type="Resource" id="Resource_lv0tl"]
 script = ExtResource("4_3r5wf")
@@ -50,9 +50,15 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 [resource]
 script = ExtResource("3_frsfv")
 produced_resource = 3
-production_rate = 5
+production_rate = 10
 name = "Stone Works"
-icon = ExtResource("1_frsfv")
+icon = ExtResource("6_vx4au")
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: 1
+})
 build_cost = Dictionary[int, int]({
 0: 30,
 1: 50,

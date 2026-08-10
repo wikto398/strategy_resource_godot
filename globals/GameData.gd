@@ -1,6 +1,7 @@
 extends Node
 
 signal population_changed()
+signal builder_added()
 
 const MAX_BUILDERS: int = 5
 
@@ -17,7 +18,18 @@ func observation() -> Array:
 
 var builder_speed_multiplier: int = 0
 var builder_production_multiplier: int = 0
-var current_builders: int = 3
+var builders_walk_on_water: bool = false
+var current_builders: int = 3:
+    set(value):
+        if value < 0:
+            push_error("current_builders cannot be negative. Attempted to set to %d" % value)
+            return
+        if value > MAX_BUILDERS:
+            push_error("current_builders cannot exceed MAX_BUILDERS (%d). Attempted to set to %d" % [MAX_BUILDERS, value])
+            return
+        if value > current_builders:
+            builder_added.emit()
+        current_builders = value
 var population: int = 0:
     set(value):
         population = value
@@ -33,3 +45,4 @@ func reset() -> void:
     current_builders = 3
     builder_speed_multiplier = 0
     builder_production_multiplier = 0
+    builders_walk_on_water = false

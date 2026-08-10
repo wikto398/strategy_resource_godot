@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="SpecialBuilding" format=3 uid="uid://ehb13nejm8nw"]
+
+[ext_resource type="Texture2D" uid="uid://hm8j8y48kxyc" path="res://assets/buildings/bridge.png" id="1_d0ck0"]
+[ext_resource type="Script" uid="uid://cfsvkmgac3386" path="res://godot_tools/Condition/Condition.gd" id="1_d0ck1"]
+[ext_resource type="Script" uid="uid://dcte2mefk2aqh" path="res://modules/Building/conditions/RequiredTerrainCondition/RequiredTerrarinCondition.gd" id="2_d0ck1"]
+[ext_resource type="Script" uid="uid://dudv08mddwqxr" path="res://modules/Building/conditions/NeighbourCondition/NeighbourCondition.gd" id="5_d0ck1"]
+[ext_resource type="Script" uid="uid://bidslecsj6i8p" path="res://modules/Building/SpecialBuilding/SpecialBuilding.gd" id="6_d0ck1"]
+[ext_resource type="Script" uid="uid://c2l5tqqs2y3iu" path="res://modules/Special/Special.gd" id="6_d0ck2"]
+[ext_resource type="Resource" uid="uid://dp2i2ldexim5g" path="res://resources/specials/BuilderWaterWalking.tres" id="6_d0ck3"]
+
+[sub_resource type="Resource" id="Resource_water"]
+script = ExtResource("2_d0ck1")
+required_terrain = 1
+
+[sub_resource type="Resource" id="Resource_grass"]
+script = ExtResource("2_d0ck1")
+
+[sub_resource type="Resource" id="Resource_neighbour"]
+script = ExtResource("5_d0ck1")
+conditions = Array[ExtResource("1_d0ck1")]([SubResource("Resource_grass")])
+
+[resource]
+script = ExtResource("6_d0ck1")
+specials = Array[ExtResource("6_d0ck2")]([ExtResource("6_d0ck3")])
+name = "Dock"
+icon = ExtResource("1_d0ck0")
+upkeep_cost = Dictionary[int, int]({
+0: 1,
+1: 1,
+2: 1,
+3: 1
+})
+build_cost = Dictionary[int, int]({
+0: 600,
+1: 600,
+2: 600,
+3: 600
+})
+build_time = 10
+conditions = Array[ExtResource("1_d0ck1")]([SubResource("Resource_water"), SubResource("Resource_neighbour")])
+unique = true
+metadata/_custom_type_script = "uid://bidslecsj6i8p"
