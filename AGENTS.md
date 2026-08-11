@@ -79,6 +79,20 @@ No GDScript test suite in-repo. No root CI.
 - Filename typo to remember: `rl_tools/rl/RLInitializer/RLIntializer.py` (imported as `RLInitializer`)
 - Training metrics hooks: `rl_tools/rl/Callback` (`Callback` ABC, `NoOpCallback`, `CallbackList`) passed as `PPOAgent(..., callback=...)`. Game-specific metrics live in `torch_files/callbacks/` (e.g. `StrategyMetricsCallback` logs action-type/building/builder/cell + rollout reward stats to TB/W&B via `agent.log` / `agent.log_histogram`). Subclass `Callback` and implement all abstract hooks for other games; compose with `CallbackList`.
 
+## Logging
+
+- Metrics flow through `RLAgent.log` / `log_histogram` → written to **TensorBoard** (when enabled) **and** **W&B** (when enabled), both keyed by `agent.global_step`. `--quiet` reduces console/file noise but keeps metrics going to TB/W&B.
+- TensorBoard is **on by default**: `SummaryWriter` writes `logs/<ts>/tensorboard/`; `--tensorboard_port N` additionally serves a live server. Pass `--no_tensorboard` to disable the writer entirely (also skips the server; `--tensorboard_port` is then ignored with a warning).
+- W&B is **off by default**; enable with `--wandb_project <name>`:
+  - `--wandb_entity`, `--wandb_name` (default `logs/<ts>` basename), `--wandb_tags a,b,c`
+  - `--wandb_mode offline|online|disabled` (default `offline` — no network)
+  - Run files (config/scalars/histograms) land in `logs/<ts>/wandb/offline-run-*` alongside other logs (already gitignored via `logs/`). Sync later:
+    ```bash
+    wandb sync logs/<ts>/wandb/offline-run-* -p <project>
+    ```
+    (`wandb sync --include-offline` only auto-searches the repo-root `./wandb/`, so point it at the run path for runs under `logs/`.)
+  - W&B init/config is built in `torch_files/train.py` via `rl_tools/rl/WandbWrapper` (full PPO/optimizer/game config); `wandb.finish()` runs in `train.py`'s `finally`.
+
 ## Conventions
 
 - Editor naming: PascalCase scripts/scenes (`project.godot` naming/*_casing=1)
