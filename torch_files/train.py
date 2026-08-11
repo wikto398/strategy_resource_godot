@@ -5,10 +5,13 @@ import torch
 
 from torch.utils.tensorboard.writer import SummaryWriter
 from rl_tools.rl.Callback import CallbackList
+from rl_tools.rl.Callback.ConsoleCallback import ConsoleCallback
 from rl_tools.rl.Callback.EvalCallback import EvalCallback
 from rl_tools.rl.Callback.NetworkSaveCallback import NetworkSaveCallback
 from rl_tools.rl.Callback.StopTrainingCallback.KeyStopCallback import KeyStopCallback
+from rl_tools.rl.Callback.TensorboardCallback import TensorboardCallback
 from rl_tools.rl.Callback.TimingCallback import TimingCallback
+from rl_tools.rl.Callback.WandbCallback import WandbCallback
 from rl_tools.rl.RLArgsParser import RLArgsParser
 from rl_tools.rl.RLInitializer import RLInitializer
 from rl_tools.rl.RLAgent.PolicyGradientAgent.PPOAgent import PPOAgent
@@ -183,6 +186,15 @@ def main():
                 ),
             ]
         )
+        # Sinks consume the agent blackboard. Order matters: EvalCallback runs
+        # its eval inside on_update_end, so sinks must come after it to pick up
+        # eval metrics in the same update cycle.
+        sinks = [ConsoleCallback()]
+        if not args.no_tensorboard:
+            sinks.append(TensorboardCallback(tensorboard_writer))
+        if wandb_run is not None:
+            sinks.append(WandbCallback(wandb_run))
+        callbacks.extend(sinks)
         callback = CallbackList(callbacks)
         observation_normalizer, reward_normalizer = make_normalizers(args, gamma=0.99)
         agent = PPOAgent(
@@ -190,8 +202,6 @@ def main():
             optimizer=optimizer,
             envs=envs,
             rollout_size=256,
-            tensorboard_writer=tensorboard_writer,
-            wandb=wandb_run,
             callback=callback,
             observation_normalizer=observation_normalizer,
             reward_normalizer=reward_normalizer,

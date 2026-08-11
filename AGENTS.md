@@ -81,17 +81,41 @@ No GDScript test suite in-repo. No root CI.
 
 ## Logging
 
-- Metrics flow through `RLAgent.log` / `log_histogram` → written to **TensorBoard** (when enabled) **and** **W&B** (when enabled), both keyed by `agent.global_step`. `--quiet` reduces console/file noise but keeps metrics going to TB/W&B.
-- TensorBoard is **on by default**: `SummaryWriter` writes `logs/<ts>/tensorboard/`; `--tensorboard_port N` additionally serves a live server. Pass `--no_tensorboard` to disable the writer entirely (also skips the server; `--tensorboard_port` is then ignored with a warning).
+Metrics flow through a shared **Blackboard** (`rl_tools/rl/Blackboard/Blackboard.py`):
+producers write records via `agent.blackboard.record(key, value, step)` /
+`record_histogram(...)` / `set(...)`, and **sink callbacks** drain them. Sinks all
+extend `SinkCallback` (`rl_tools/rl/Callback/SinkCallback/`) — to add a new output,
+subclass it and implement `_write_scalar` / `_write_histogram`.
+
+- Producers (never touch TB/W&B directly): `EvalCallback`, `StrategyMetricsCallback`,
+  `TimingCallback`, PPOAgent loss/norm_scale logging. `EvalCallback` also publishes a
+  structured `eval/latest` dict on the blackboard (win_rate, returns, population…).
+- Sinks (appended **after** `EvalCallback` so eval data is flushed in the same update):
+  - `ConsoleCallback` — `logger.info("Step N: key = value")` at INFO
+  - `TensorboardCallback` — `SummaryWriter` (when enabled)
+  - `WandbCallback` — `wandb.run` (when enabled), incl. `eval/latest` as a `wandb.Table`
+- **Auto-clear**: once every registered sink cursor has passed an event id, the event is
+  purged (min-cursor watermark, batched every `Blackboard.CLEAR_BATCH_SIZE = 4096`
+  events) so the log stays bounded. A lagging sink blocks clearing until it catches up.
+- TensorBoard is **on by default**: `SummaryWriter` writes `logs/<ts>/tensorboard/`;
+  `--tensorboard_port N` additionally serves a live server. Pass `--no_tensorboard` to
+  disable the writer entirely (also skips the server; `--tensorboard_port` is then
+  ignored with a warning).
 - W&B is **off by default**; enable with `--wandb_project <name>`:
   - `--wandb_entity`, `--wandb_name` (default `logs/<ts>` basename), `--wandb_tags a,b,c`
   - `--wandb_mode offline|online|disabled` (default `offline` — no network)
-  - Run files (config/scalars/histograms) land in `logs/<ts>/wandb/offline-run-*` alongside other logs (already gitignored via `logs/`). Sync later:
+  - Run files (config/scalars/histograms) land in `logs/<ts>/wandb/offline-run-*`
+    alongside other logs (already gitignored via `logs/`). Sync later:
     ```bash
     wandb sync logs/<ts>/wandb/offline-run-* -p <project>
     ```
-    (`wandb sync --include-offline` only auto-searches the repo-root `./wandb/`, so point it at the run path for runs under `logs/`.)
-  - W&B init/config is built in `torch_files/train.py` via `rl_tools/rl/WandbWrapper` (full PPO/optimizer/game config); `wandb.finish()` runs in `train.py`'s `finally`.
+    (`wandb sync --include-offline` only auto-searches the repo-root `./wandb/`, so
+    point it at the run path for runs under `logs/`.)
+  - W&B init/config is built in `torch_files/train.py` via `rl_tools/rl/WandbWrapper`
+    (full PPO/optimizer/game config); `wandb.finish()` runs in `train.py`'s `finally`.
+  - Full per-metric history is stored natively by W&B (each scalar is logged with its
+    step), so complete training curves are available in the dashboard; grouped
+    multi-line views can be built there.
 
 ## Conventions
 

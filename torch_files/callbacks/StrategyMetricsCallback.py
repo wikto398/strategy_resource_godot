@@ -40,28 +40,7 @@ class StrategyMetricsCallback(Callback):
         self.n_builders = n_builders
 
     def on_train_start(self) -> None:
-        if self.agent is None:
-            return
-        if self.agent.tensorboard_writer is None:
-            return
-        builder_tags = [
-            f"policy/builder_selection/builder_{i}" for i in range(self.n_builders)
-        ]
-        building_tags = [
-            f"policy/building_selection/{name}" for name in self.building_names
-        ]
-        action_tags = [
-            f"policy/action_selection/{name}" for name in self.action_type_names
-        ]
-        self.agent.tensorboard_writer.add_custom_scalars(
-            {
-                "Policy": {
-                    "Building selection": ["Multiline", building_tags],
-                    "Builder selection": ["Multiline", builder_tags],
-                    "Action selection": ["Multiline", action_tags],
-                }
-            }
-        )
+        pass
 
     def on_train_end(self) -> None:
         pass
@@ -83,15 +62,18 @@ class StrategyMetricsCallback(Callback):
         if self.agent is None:
             return
 
+        blackboard = self.agent.blackboard
+        step = self.agent.global_step
         rewards = self._to_numpy(rollout["rewards"])
         dones = self._to_numpy(rollout["dones"]).astype(bool)
         actions = self._to_numpy(rollout["actions"])
 
-        self.agent.log("rollout/mean_reward", float(np.mean(rewards)))
-        self.agent.log("rollout/done_rate", float(np.mean(dones)))
-        self.agent.log(
+        blackboard.record("rollout/mean_reward", float(np.mean(rewards)), step)
+        blackboard.record("rollout/done_rate", float(np.mean(dones)), step)
+        blackboard.record(
             "rollout/mean_undiscounted_return",
             float(np.mean(np.sum(rewards, axis=0))),
+            step,
         )
 
         if actions.ndim < 2:
@@ -103,9 +85,10 @@ class StrategyMetricsCallback(Callback):
         type_counts = Counter(types.tolist())
         type_total = sum(type_counts.values()) or 1
         for action_id, name in enumerate(self.action_type_names):
-            self.agent.log(
+            blackboard.record(
                 f"policy/action_selection/{name}",
                 type_counts[action_id] / type_total,
+                step,
             )
 
         build_mask = types == ACTION_BUILD
@@ -117,9 +100,10 @@ class StrategyMetricsCallback(Callback):
         building_counts = Counter(buildings.tolist())
         building_total = sum(building_counts.values()) or 1
         for building_id, name in enumerate(self.building_names):
-            self.agent.log(
+            blackboard.record(
                 f"policy/building_selection/{name}",
                 building_counts[building_id] / building_total,
+                step,
             )
 
         move_mask = types == ACTION_MOVE
@@ -131,20 +115,26 @@ class StrategyMetricsCallback(Callback):
         builder_counts = Counter(builders.tolist())
         builder_total = sum(builder_counts.values()) or 1
         for builder_id in range(self.n_builders):
-            self.agent.log(
+            blackboard.record(
                 f"policy/builder_selection/builder_{builder_id}",
                 builder_counts[builder_id] / builder_total,
+                step,
             )
 
     def on_update_start(self, rollout: TensorDict) -> None:
         if self.agent is None:
             return
+        step = self.agent.global_step
         if "returns" in rollout:
             returns = self._to_numpy(rollout["returns"])
-            self.agent.log("rollout/mean_return", float(np.mean(returns)))
+            self.agent.blackboard.record(
+                "rollout/mean_return", float(np.mean(returns)), step
+            )
         if "advantages" in rollout:
             advantages = self._to_numpy(rollout["advantages"])
-            self.agent.log("rollout/mean_advantage", float(np.mean(advantages)))
+            self.agent.blackboard.record(
+                "rollout/mean_advantage", float(np.mean(advantages)), step
+            )
 
     def on_update_end(self, update_info: dict) -> None:
         pass
