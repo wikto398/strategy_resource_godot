@@ -105,12 +105,17 @@ func _on_next_turn() -> void:
 	pass
 
 func observation() -> Array:
+	var progress_ratio = 0.0
+	if in_progress_building and in_progress_building.build_time > 0:
+		progress_ratio = float(in_progress_building.building_progress) / float(in_progress_building.build_time)
 	return [
 		terrain_type,
 		1 if walkable else 0,
 		ResourceDatabase.building_to_int.get(building, 0) if building else 0,
 		1 if structure else 0,
 		1 if unit else 0,
+		ResourceDatabase.building_to_int.get(in_progress_building, 0) if in_progress_building else 0,
+		progress_ratio,
 	]
 
 func _get_grid_position():

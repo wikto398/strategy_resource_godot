@@ -17,11 +17,21 @@ class GameNetwork(nn.Module):
         grid_w=16,
         build_spatial_ch=64,
         build_cond_ch=16,
+        entropy_weights: dict | None = None,
     ):
         super().__init__()
         self.n_buildings = n_buildings
         self.grid_h = grid_h
         self.grid_w = grid_w
+        self.entropy_weights = {
+            "action": 1.0,
+            "builder": 1.0,
+            "building": 1.0,
+            "move_cell": 1.0,
+            "build_cell": 1.0,
+        }
+        if entropy_weights is not None:
+            self.entropy_weights.update(entropy_weights)
 
         self.cell_encoder = nn.Sequential(
             nn.Linear(n_cell_features, d_model),
@@ -60,7 +70,11 @@ class GameNetwork(nn.Module):
             nn.ReLU(),
             nn.Conv2d(build_spatial_ch // 2, 1, kernel_size=1),
         )
-        self.value_head = nn.Linear(d_model, 1)
+        self.value_head = nn.Sequential(
+            nn.Linear(d_model * 3, d_model),
+            nn.ReLU(),
+            nn.Linear(d_model, 1),
+        )
         self.deterministic = False
 
     @staticmethod
@@ -88,11 +102,13 @@ class GameNetwork(nn.Module):
         buildable_cells     = action_mask["buildable_cells"]     if action_mask is not None else torch.ones((B, n_buildings, n_cells), dtype=torch.bool, device=device)
         available_buildings = action_mask["available_buildings"] if action_mask is not None else torch.ones((B, n_buildings), dtype=torch.bool, device=device)
         available_builders  = action_mask["available_builders"]  if action_mask is not None else torch.ones((B, n_builders), dtype=torch.bool, device=device)
+        available_skip      = action_mask["available_skip"]      if action_mask is not None else torch.ones((B,), dtype=torch.bool, device=device)
 
         available_builders = available_builders.bool()
         available_buildings = available_buildings.bool()
         moveable_cells = moveable_cells.bool()
         buildable_cells = buildable_cells.bool()
+        available_skip = available_skip.bool()
 
         builder_can_move = available_builders & moveable_cells.any(dim=-1)          # (B, n_builders)
         building_can_build = available_buildings & buildable_cells.any(dim=-1)      # (B, n_buildings)
@@ -155,13 +171,17 @@ class GameNetwork(nn.Module):
         pool_mask = available_builders.unsqueeze(-1).float()
         pooled = x.mul(pool_mask).sum(dim=1) / pool_mask.sum(dim=1).clamp(min=1.0)
 
+        real_builders = builder_features.sum(dim=-1) > 0
+        real_pool_mask = real_builders.unsqueeze(-1).float()
+        pooled_real = x.mul(real_pool_mask).sum(dim=1) / real_pool_mask.sum(dim=1).clamp(min=1.0)
+
         builder_logits = self.builder_head(x).squeeze(-1)
         builder_logits = builder_logits.masked_fill(~builder_can_move, float("-inf"))
 
         action_logits = self.action_head(pooled)
         action_logits = torch.stack(
             [
-                action_logits[:, 0],
+                action_logits[:, 0].masked_fill(~available_skip, float("-inf")),
                 action_logits[:, 1].masked_fill(~can_move, float("-inf")),
                 action_logits[:, 2].masked_fill(~can_build, float("-inf")),
             ],
@@ -174,7 +194,10 @@ class GameNetwork(nn.Module):
         move_cell_logits = self.move_cell_head(bc).squeeze(-1)
         move_cell_logits = move_cell_logits.masked_fill(~moveable_cells, float("-inf"))
 
-        value = self.value_head(pooled)
+        cell_summary = cell_encoded.mean(dim=1)  # (B, d_model)
+        value = self.value_head(
+            torch.cat([pooled_real, global_encoded, cell_summary], dim=-1)
+        )
 
         return TensorDict({
             "action_logits":     action_logits,
@@ -289,10 +312,19 @@ class GameNetwork(nn.Module):
         move_cell_ent = self._safe_entropy(logits["move_cell_logits"][batch_idx, builder])
         build_cell_ent = self._safe_entropy(logits["build_cell_logits"][batch_idx, building])
 
+        ew = self.entropy_weights
         entropy = (
-            action_ent
-            + torch.where(is_move, builder_ent + move_cell_ent, 0.0)
-            + torch.where(is_build, building_ent + build_cell_ent, 0.0)
+            ew["action"] * action_ent
+            + torch.where(
+                is_move,
+                ew["builder"] * builder_ent + ew["move_cell"] * move_cell_ent,
+                0.0,
+            )
+            + torch.where(
+                is_build,
+                ew["building"] * building_ent + ew["build_cell"] * build_cell_ent,
+                0.0,
+            )
         )
 
         return TensorDict({

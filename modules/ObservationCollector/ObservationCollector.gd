@@ -15,6 +15,7 @@ const WIN_PROGRESS_COEF: float = 0.002
 const OVER_COMMIT_PENALTY: float = 0.5
 const WIN_BONUS: float = 25.0
 const LOSS_PENALTY: float = -10.0
+const LOSS_SURVIVAL_HORIZON: float = 200.0
 const POP_MILESTONES: Array = [4, 5, 6, 8]
 const POP_MILESTONE_BONUS: float = 0.5
 const PROD_MILESTONES: Array = [5, 10, 20, 30]
@@ -159,7 +160,7 @@ func _action_mask() -> Dictionary:
     var field_masks = _field_masks()
     var moveable_cells = _movable_cells()
     var available_builders = _available_builders()
-    return {"buildable_cells": field_masks, "available_buildings": available_buildings, "moveable_cells": moveable_cells, "available_builders": available_builders}
+    return {"buildable_cells": field_masks, "available_buildings": available_buildings, "moveable_cells": moveable_cells, "available_builders": available_builders, "available_skip": 1 if ResourceDatabase.buildings[0].already_built else 0}
 
 func _field_masks() -> Array:
     var field_masks = []
@@ -419,12 +420,16 @@ func _on_add_to_reward(value: float, tag: String = "events") -> void:
     pending_components[tag] = pending_components.get(tag, 0.0) + value
 
 func _result_score() -> float:
-    var score = WIN_BONUS if is_game_won else LOSS_PENALTY
+    var score = WIN_BONUS if is_game_won else _loss_penalty()
     score += _production_bonus()
     score += _progress_bonus()
     DebugLogger.debug("Final score calculated: " + str(score))
 
     return score
+
+func _loss_penalty() -> float:
+    var frac = clampf(float(Turn.turn) / LOSS_SURVIVAL_HORIZON, 0.0, 1.0)
+    return LOSS_PENALTY * (1.0 - frac)
 
 func _progress_bonus() -> float:
     var score = 0.0

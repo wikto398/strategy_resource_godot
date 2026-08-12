@@ -63,7 +63,7 @@ def main():
         ]
 
         network = GameNetwork(
-            n_cell_features=5,
+            n_cell_features=7,
             n_global_features=15,
             n_buildings=len(BUILDING_NAMES),
             n_builder_features=5,
@@ -73,6 +73,13 @@ def main():
             grid_w=16,
             build_spatial_ch=64,
             build_cond_ch=16,
+            entropy_weights={
+                "action": 1.0,
+                "builder": 0.3,
+                "building": 0.3,
+                "move_cell": 0.1,
+                "build_cell": 0.1,
+            },
         )
         optimizer = torch.optim.Adam(network.parameters(), lr=3e-4)
         tensorboard_writer = None
@@ -114,9 +121,12 @@ def main():
                     "epochs": 5,
                     "batch_size": 64,
                     "rollout_size": 256,
-                    "entropy_coef_start": 0.7,
+                    "entropy_coef_start": 0.2,
                     "entropy_coef_end": 0.01,
                     "entropy_coef_decay_steps": 1_000_000,
+                    "adaptive_entropy": True,
+                    "entropy_target": 0.5,
+                    "entropy_adapt_lr": 0.1,
                     "clip_epsilon": 0.2,
                     "value_loss_coef": 0.5,
                 },
@@ -175,6 +185,7 @@ def main():
                     envs=eval_envs,
                     every_timesteps=args.eval_every_timesteps,
                     n_episodes=args.eval_episodes,
+                    deterministic=args.deterministic_eval,
                 )
             )
         callbacks.extend(
@@ -205,6 +216,11 @@ def main():
             callback=callback,
             observation_normalizer=observation_normalizer,
             reward_normalizer=reward_normalizer,
+            entropy_coef_start=0.2,
+            entropy_coef_end=0.01,
+            adaptive_entropy=True,
+            entropy_target=0.5,
+            entropy_adapt_lr=0.1,
         )
         if args.checkpoint:
             agent.load(

@@ -122,7 +122,7 @@ def main() -> None:
         ]
 
         network = GameNetwork(
-            n_cell_features=5,
+            n_cell_features=7,
             n_global_features=15,
             n_buildings=len(BUILDING_NAMES),
             n_builder_features=5,
