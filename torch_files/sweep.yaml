@@ -1,0 +1,21 @@
+method: bayes
+metric:
+  name: eval/win_rate
+  goal: maximize
+parameters:
+  lr:
+    distribution: log_uniform
+    min: -6.0
+    max: -3.0
+  gamma:
+    values: [0.95, 0.99, 0.995]
+  lam:
+    values: [0.9, 0.95, 0.98]
+  epochs:
+    values: [3, 5, 8]
+  batch_size:
+    values: [32, 64, 128]
+  entropy_coef_start:
+    values: [0.1, 0.2, 0.4]
+  clip_epsilon:
+    values: [0.1, 0.2, 0.3]

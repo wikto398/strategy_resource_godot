@@ -7,9 +7,10 @@ import torch
 from rl_tools.game_engine.HeadlessGameEngine import HeadlessGameEngine
 from rl_tools.rl.Environment import Environment
 from rl_tools.rl.RLInitializer import RLInitializer
-from torch_files.GameNetwork import GameNetwork
-from torch_files.normalizers import make_normalizers
-from torch_files.train import BUILDING_NAMES
+from torch_files.Factory import (
+    StrategyNetworkFactory,
+    StrategyNormalizersFactory,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -85,9 +86,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _step_env(
-    env: Environment, action: np.ndarray
-) -> tuple[dict, float, bool, dict]:
+def _step_env(env: Environment, action: np.ndarray) -> tuple[dict, float, bool, dict]:
     o, r, d, info = env.step(action)
     if d:
         o = env.reset()
@@ -121,23 +120,12 @@ def main() -> None:
             for i, connector in enumerate(connectors)
         ]
 
-        network = GameNetwork(
-            n_cell_features=7,
-            n_global_features=15,
-            n_buildings=len(BUILDING_NAMES),
-            n_builder_features=5,
-            d_model=128,
-            n_heads=4,
-            grid_h=12,
-            grid_w=16,
-            build_spatial_ch=64,
-            build_cond_ch=16,
-        )
+        network = StrategyNetworkFactory.instance().build()
 
         from rl_tools.rl.RLAgent.PolicyGradientAgent.PPOAgent import PPOAgent
 
-        observation_normalizer, reward_normalizer = make_normalizers(
-            args, gamma=0.99
+        observation_normalizer, reward_normalizer = (
+            StrategyNormalizersFactory.instance().build(args)
         )
         agent = PPOAgent(
             network=network,
@@ -221,12 +209,8 @@ def main() -> None:
 
         valid = [info for info in completed_infos if info.get("reward_breakdown")]
         if valid:
-            win_turns = [
-                float(info["turns"]) for info in valid if info.get("won")
-            ]
-            loss_turns = [
-                float(info["turns"]) for info in valid if info.get("lost")
-            ]
+            win_turns = [float(info["turns"]) for info in valid if info.get("won")]
+            loss_turns = [float(info["turns"]) for info in valid if info.get("lost")]
             completed_total = sum(
                 (info.get("buildings_completed") or {}).values() for info in valid
             )
@@ -234,15 +218,10 @@ def main() -> None:
                 [sum(info.get("production", []) or []) for info in valid]
             )
             summary += (
-                f", mean win turns={np.mean(win_turns):.1f}"
-                if win_turns
-                else ""
-            ) + (
-                f", mean loss turns={np.mean(loss_turns):.1f}" if loss_turns else ""
-            ) + (
-                f", mean buildings completed={completed_total / len(valid):.1f}"
-            ) + (
-                f", mean end production={mean_production:.1f}"
+                (f", mean win turns={np.mean(win_turns):.1f}" if win_turns else "")
+                + (f", mean loss turns={np.mean(loss_turns):.1f}" if loss_turns else "")
+                + (f", mean buildings completed={completed_total / len(valid):.1f}")
+                + (f", mean end production={mean_production:.1f}")
             )
         log.info(summary)
 

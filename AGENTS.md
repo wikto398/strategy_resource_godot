@@ -77,7 +77,8 @@ No GDScript test suite in-repo. No root CI.
 - Turn flow / win-loss: `Turn`, `Global.game_won` / `game_lost`, reward hooks via `Global.add_to_reward`
 - NN: `torch_files/GameNetwork/GameNetwork.py` (attention + multi-head); agent is `PPOAgent` with TensorDicts — network owns obs processing
 - Filename typo to remember: `rl_tools/rl/RLInitializer/RLIntializer.py` (imported as `RLInitializer`)
-- Training metrics hooks: `rl_tools/rl/Callback` (`Callback` ABC, `NoOpCallback`, `CallbackList`) passed as `PPOAgent(..., callback=...)`. Game-specific metrics live in `torch_files/callbacks/` (e.g. `StrategyMetricsCallback` logs action-type/building/builder/cell + rollout reward stats to TB/W&B via `agent.log` / `agent.log_histogram`). Subclass `Callback` and implement all abstract hooks for other games; compose with `CallbackList`.
+- Training orchestration: generic `rl_tools/rl/Trainer` (train + sweep); game-specific construction injected via singleton factories `torch_files/Factory/` (`StrategyNetworkFactory`, `StrategyCallbacksFactory`, `StrategyNormalizersFactory`, `instance()` pattern) implementing the ABCs in `rl_tools/rl/Factory/`.
+- Training metrics hooks: `rl_tools/rl/Callback` (`Callback` ABC, `NoOpCallback`, `CallbackList`) passed as `PPOAgent(..., callback=...)`. Game-specific metrics live in `torch_files/callbacks/` (e.g. `StrategyMetricsCallback` records action-type/building/builder/cell + rollout stats to the blackboard). Subclass `Callback` and implement all abstract hooks for other games; compose with `CallbackList`.
 
 ## Logging
 
@@ -111,11 +112,38 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
     ```
     (`wandb sync --include-offline` only auto-searches the repo-root `./wandb/`, so
     point it at the run path for runs under `logs/`.)
-  - W&B init/config is built in `torch_files/train.py` via `rl_tools/rl/WandbWrapper`
-    (full PPO/optimizer/game config); `wandb.finish()` runs in `train.py`'s `finally`.
+  - W&B init/config is built in `rl_tools/rl/Trainer` via `rl_tools/rl/WandbWrapper`
+    (full PPO/optimizer/game config); `wandb.finish()` runs in the Trainer's `finally`.
   - Full per-metric history is stored natively by W&B (each scalar is logged with its
     step), so complete training curves are available in the dashboard; grouped
     multi-line views can be built there.
+
+### Sweeps
+
+- Hyperparameter sweeps run through the generic `rl_tools/rl/Trainer` +
+  `WandbWrapper.sweep()` (which wraps `wandb.sweep` + `wandb.agent`).
+  Game-specific construction is injected via **singleton factories**
+  (`torch_files/Factory/`, `instance()` classmethod pattern) implementing the ABCs in
+  `rl_tools/rl/Factory/` — add a new game by implementing `NetworkFactory` /
+  `CallbacksFactory` / `NormalizersFactory`; no Trainer changes.
+- Search space is a **YAML** file (example: `torch_files/sweep.yaml`); sweepable knobs
+  are forwarded straight to `PPOAgent(**params)` (agent defaults fill the rest), so
+  the sweep `parameters` keys must match PPOAgent constructor kwargs. Only `lr` is
+  special-cased by the Trainer (it builds the optimizer).
+- Run:
+  ```bash
+  python -m torch_files.train --instances=8 --eval_episodes 20 --eval_instances 4 \
+    --eval_every_timesteps 2048 --seed 42 --render_eval \
+    --wandb_project strategy-resource --wandb_mode online \
+    --sweep_config torch_files/sweep.yaml --sweep_count 10 --max_steps 1_000_000
+  ```
+  `--max_steps N` stops each run at ~N global steps (overrides `--iterations`;
+  derived as `ceil(max_steps / (rollout_size * instances))`). Without it, `--iterations`
+  governs.
+- `--sweep_config` requires **online mode** (or a self-hosted W&B server); the Trainer
+  raises on `offline`/`disabled`. Trials run sequentially in one agent process (no
+  Godot port conflicts). Sampled hyperparameters are recorded in `run.config` via
+  `config.update()`; the search metric is `eval/win_rate`.
 
 ## Conventions
 
