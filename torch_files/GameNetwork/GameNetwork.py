@@ -83,6 +83,9 @@ class GameNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(d_model, 1),
         )
+        self.register_buffer(
+            "_building_ids", torch.arange(n_buildings), persistent=False
+        )
         self.deterministic = False
 
     @staticmethod
@@ -141,12 +144,8 @@ class GameNetwork(nn.Module):
             else torch.ones((B,), dtype=torch.bool, device=device)
         )
 
-        available_builders = available_builders.bool()
-        real_builders = real_builders.bool()
-        available_buildings = available_buildings.bool()
-        moveable_cells = moveable_cells.bool()
-        buildable_cells = buildable_cells.bool()
-        available_skip = available_skip.bool()
+        # Masks arrive as bool from split_observation / the fallbacks above; the
+        # .bool() re-casts were dropped (no-op kernels).
 
         builder_can_move = available_builders & moveable_cells.any(
             dim=-1
@@ -164,9 +163,7 @@ class GameNetwork(nn.Module):
         if n_cells != H * W:
             raise ValueError(f"n_cells={n_cells} != grid_h*grid_w={H * W}")
 
-        bt = self.building_encoder(
-            torch.arange(n_buildings, device=device)
-        )  # (n_buildings, d_model)
+        bt = self.building_encoder(self._building_ids)  # (n_buildings, d_model)
         bt = bt.unsqueeze(0).expand(B, -1, -1)  # (B, n_buildings, d_model)
 
         cell_map = cell_encoded.view(B, H, W, -1).permute(

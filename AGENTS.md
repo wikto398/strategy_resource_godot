@@ -46,6 +46,9 @@ PYTHONPATH=. rl_tools/.venv/bin/python -m rl_tools.main --instances 2 -k
 PYTHONPATH=. rl_tools/.venv/bin/python torch_files/train.py --instances 2 -k
 
 # Optional: --render keeps Godot windowed; --log_level TRACE|DEBUG|INFO|...
+# --torch_compile wraps the network in torch.compile (CUDA-only, off by default;
+# verified bit-identical by tools/check_compile_equivalence.py, but speedup is
+# modest under GPU contention; reduce-overhead mode is measurably worse here)
 # Python lint/format (rl_tools only; pre-commit = ruff check --fix + ruff format)
 cd rl_tools && uv run ruff check --fix . && uv run ruff format .
 ```
@@ -59,6 +62,7 @@ No GDScript test suite in-repo. No root CI.
 - Only engine-consumed args are forwarded to Godot: ports (set explicitly) plus the allowlist `GODOT_ARG_ALLOWLIST` in `RLIntializer.py` (`log_level`, `log_to_file`, `seed`, `render`). All other CLI args stay Trainer-only; pass extra engine flags with repeatable `--engine_args key=value`
 - Handshake: env → `ENV_READY` → trainer `TRAINER_READY` → env `TRAINER_READY_ACK` → trainer `START_TRAINING`
 - Observations: MessagePack dict `{observation, action_mask, reward, done, info}` (`ObservationCollector` + `Messagepack.encode`); `info` carries `{won, lost}` and, on the `done` step, an episode summary (`turns`, `population`, `working_population`, `total_resources`, `production`, `buildings_started`, `buildings_completed`, `reward_breakdown`) consumed by eval/play metrics
+  - Wire format is a **flat binary packet** (magic `0x53 0x01`, then `fields f32(192·7) | global f32(15) | builders f32(5·6) | buildable_cells u8(10·192) | available_buildings u8(10) | moveable_cells u8(5·192) | available_builders u8(5) | real_builders u8(5) | available_skip u8(1) | reward f32 | done u8 | info_len u32 | msgpack(info)`), native little-endian. Keep the layout in sync across `modules/ObservationCollector/ObservationCollector.gd`, `rl_tools/game_engine/ObservationInterface/UDPObservation/UDPObservation.py`, and the `torch_files/Factory/NetworkFactory.py` shapes. The Python decoder falls back to MessagePack if the magic is absent.
 - Actions: raw byte list via `bytearray(action)` — **not** msgpack. Layout handled by `ActionExecutor`:
   - `0` next turn
   - `1, builder_id, _, cell_flat` move

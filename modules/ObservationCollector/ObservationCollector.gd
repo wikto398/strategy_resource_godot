@@ -47,6 +47,14 @@ var _completed_value: float = 0.0
 var _built_types: Dictionary = {}
 var _built_started: Dictionary = {}
 var _built_completed: Dictionary = {}
+var _neighbor_table: Array[PackedInt32Array] = []
+var _start_cache: Dictionary[int, PackedByteArray] = {}
+var _walk_on_water_snapshot: bool = false
+var _buildable_cache: Array = []
+var _gate_cache: Array = []
+var _field_masks_cache: Array = []
+var _pending_patches: Array[int] = []
+var _field_masks_initialized: bool = false
 var _pop_milestones: Dictionary = {}
 var _prod_milestones: Dictionary = {}
 var _stock_milestones: Dictionary = {}
@@ -76,10 +84,11 @@ func _ready() -> void:
 func _on_action_executed(action: Array) -> void:
     last_action = action
 
-func _on_building_started(building: Building) -> void:
+func _on_building_started(building: Building, field: Field) -> void:
     _built_started[building.name] = _built_started.get(building.name, 0) + 1
+    _pending_patches.append(_flat_of(field))
 
-func _on_building_completed(building: Building) -> void:
+func _on_building_completed(building: Building, field: Field) -> void:
     var count_before = _built_completed.get(building.name, 0)
     _built_completed[building.name] = count_before + 1
     var total_cost = 0
@@ -96,6 +105,9 @@ func _on_building_completed(building: Building) -> void:
         var net = _projected_production(building.produced_resource)
         var gap = clampf(GAP_TARGET - float(net), 0.0, GAP_CAP)
         _on_add_to_reward(GAP_COEF * gap, "resource_gap")
+    _pending_patches.append(_flat_of(field))
+    for neighbor in field_grid.get_neighbours(field.grid_position):
+        _pending_patches.append(_flat_of(neighbor))
 
 func _projected_production(resource: Enums.TownResource) -> int:
     var total: int = production_handler.current_production.get(resource, 0)
@@ -186,25 +198,103 @@ func _action_mask() -> Dictionary:
     var real_builders = _real_builders()
     return {"buildable_cells": field_masks, "available_buildings": available_buildings, "moveable_cells": moveable_cells, "available_builders": available_builders, "real_builders": real_builders, "available_skip": 1 if ResourceDatabase.buildings[0].already_built else 0}
 
-func _field_masks() -> Array:
-    var field_masks = []
+func get_observation_bytes() -> PackedByteArray:
+    # Flat binary protocol. Layout must stay in sync with
+    # rl_tools/game_engine/ObservationInterface/UDPObservation/UDPObservation.py
+    # and torch_files/Factory/NetworkFactory.py (AGENTS.md). Native little-endian.
+    # Call order matches get_observation() so _reward() side-effects are unchanged.
+    var observation := _observation()
+    var action_mask := _action_mask()
+    var reward_val := _reward()
+    var done_val := _done()
+    var info := _info()
 
-    for building in ResourceDatabase.buildings:
-        var current_field_building_masks = []
+    var bytes := PackedByteArray()
+    bytes.append(0x53)  # magic
+    bytes.append(0x01)  # version
 
-        if not can_build(building):
-            for field in field_grid.ordered_fields:
-                current_field_building_masks.append(0)
+    var floats := PackedFloat32Array()
+    for field_obs in observation["fields"]:
+        for v in field_obs:
+            floats.append(float(v))
+    for v in observation["global"]:
+        floats.append(float(v))
+    for builder_obs in observation["builders"]:
+        for v in builder_obs:
+            floats.append(float(v))
+    bytes.append_array(floats.to_byte_array())
+
+    bytes.append_array(_mask_u8s(action_mask["buildable_cells"]))
+    bytes.append_array(_mask_u8s(action_mask["available_buildings"]))
+    bytes.append_array(_mask_u8s(action_mask["moveable_cells"]))
+    bytes.append_array(_mask_u8s(action_mask["available_builders"]))
+    bytes.append_array(_mask_u8s(action_mask["real_builders"]))
+    bytes.append(1 if action_mask["available_skip"] else 0)
+
+    bytes.append_array(PackedFloat32Array([reward_val]).to_byte_array())
+    bytes.append(1 if done_val else 0)
+
+    var info_bytes: PackedByteArray = Messagepack.encode(info)["value"]
+    bytes.append_array(PackedInt32Array([info_bytes.size()]).to_byte_array())
+    bytes.append_array(info_bytes)
+    return bytes
+
+func _mask_u8s(mask: Array) -> PackedByteArray:
+    var out := PackedByteArray()
+    for row in mask:
+        if row is Array:
+            for v in row:
+                out.append(1 if v else 0)
         else:
-            for field in field_grid.ordered_fields:
-                if build_handler.can_build_on_field(field, building):
-                    current_field_building_masks.append(1)
-                else:
-                    current_field_building_masks.append(0)
+            out.append(1 if row else 0)
+    return out
 
-        field_masks.append(current_field_building_masks)
+func _field_masks() -> Array:
+    if not _field_masks_initialized:
+        _init_field_masks()
+    _apply_pending_patches()
+    _refresh_gates()
+    return _field_masks_cache
 
-    return field_masks
+func _init_field_masks() -> void:
+    var zeros: Array = []
+    for j in field_grid.ordered_fields.size():
+        zeros.append(0)
+    for building in ResourceDatabase.buildings:
+        var gate = can_build(building)
+        _gate_cache.append(gate)
+        var buildable_row = []
+        for field in field_grid.ordered_fields:
+            buildable_row.append(1 if build_handler.can_build_on_field(field, building) else 0)
+        _buildable_cache.append(buildable_row)
+        _field_masks_cache.append(buildable_row.duplicate() if gate else zeros.duplicate())
+    _field_masks_initialized = true
+
+func _flat_of(field: Field) -> int:
+    return int(field.grid_position.x + field_grid.columns * field.grid_position.y)
+
+func _apply_pending_patches() -> void:
+    if _pending_patches.is_empty():
+        return
+    for flat in _pending_patches:
+        var field = field_grid.ordered_fields[flat]
+        for i in ResourceDatabase.buildings.size():
+            var value = 1 if build_handler.can_build_on_field(field, ResourceDatabase.buildings[i]) else 0
+            _buildable_cache[i][flat] = value
+            if _gate_cache[i]:
+                _field_masks_cache[i][flat] = value
+    _pending_patches.clear()
+
+func _refresh_gates() -> void:
+    for i in ResourceDatabase.buildings.size():
+        var gate = can_build(ResourceDatabase.buildings[i])
+        if gate != _gate_cache[i]:
+            _gate_cache[i] = gate
+            if gate:
+                _field_masks_cache[i] = _buildable_cache[i].duplicate()
+            else:
+                for j in _field_masks_cache[i].size():
+                    _field_masks_cache[i][j] = 0
 
 func _available_buildings() -> Array:
     var available_buildings = []
@@ -230,22 +320,30 @@ func _global_features() -> Array:
     return obs
 
 func _movable_cells() -> Array:
+    _ensure_pathing_data()
     var movable_cells = []
+    var columns: int = field_grid.columns
     for builder in builder_controller.builders:
         var builder_cells = []
-        var reachable_fields = builder.reachable_fields()
-        for field in field_grid.ordered_fields:
-            if reachable_fields.has(field):
-                builder_cells.append(1)
-            else:
-                builder_cells.append(0)
+        var flat: int = int(builder.field.grid_position.x + columns * builder.field.grid_position.y)
+        if not _start_cache.has(flat):
+            _start_cache[flat] = FlatPathing.bfs_mask(flat, _neighbor_table)
+        for cell in _start_cache[flat]:
+            builder_cells.append(cell)
         movable_cells.append(builder_cells)
     while movable_cells.size() < GameData.MAX_BUILDERS:
         var empty_cells = []
-        for field in field_grid.ordered_fields:
+        for i in field_grid.ordered_fields.size():
             empty_cells.append(0)
         movable_cells.append(empty_cells)
     return movable_cells
+
+func _ensure_pathing_data() -> void:
+    var walk_on_water: bool = GameData.builders_walk_on_water
+    if _neighbor_table.is_empty() or _walk_on_water_snapshot != walk_on_water:
+        _neighbor_table = FlatPathing.build_neighbor_table(field_grid, walk_on_water)
+        _start_cache.clear()
+        _walk_on_water_snapshot = walk_on_water
 
 func _on_game_won() -> void:
     is_game_won = true

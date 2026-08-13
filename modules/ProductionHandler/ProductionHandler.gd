@@ -50,7 +50,7 @@ func start_production(building: Building, field: Field) -> void:
 		total_cost += resource
 	Global.add_to_reward.emit(min(2.0, 0.10 * total_cost / 100.0), "build_start")
 	building.building_started(field)
-	building_started.emit(building)
+	building_started.emit(building, field)
 	field.in_progress_building = building
 	resources_updated.emit(town_resources)
 	field.building_finished.connect(_on_building_finished)
@@ -74,7 +74,7 @@ func _on_building_finished(field: Field) -> void:
 		field.building = in_progress_building
 		field.in_progress_building = null
 		production_updated.emit(current_production)
-		building_completed.emit(in_progress_building)
+		building_completed.emit(in_progress_building, field)
 		field.building_finished.disconnect(_on_building_finished)
 	else:
 		DebugLogger.warning("No in_progress_building in progress to finish at field: " + str(field.grid_position))
