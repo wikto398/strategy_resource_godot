@@ -1,0 +1,32 @@
+# Example YAML config for a non-sweep training run.
+# Usage: python -m torch_files.train --config torch_files/config.yaml
+# Explicit CLI flags override `cli` values; hyperparams go to PPOAgent directly.
+# Note: write lr as 0.0003 (PyYAML parses `3e-4` as a string).
+
+hyperparams:
+  lr: 0.0003
+  gamma: 0.99
+  lam: 0.95
+  epochs: 5
+  batch_size: 64
+  rollout_size: 256
+  entropy_coef_start: 0.2
+  entropy_coef_end: 0.01
+  entropy_target: 0.5
+  entropy_adapt_lr: 0.1
+  adaptive_entropy: true
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+
+cli:
+  instances: 8
+  eval_instances: 4
+  eval_episodes: 20
+  eval_every_timesteps: 10000
+  seed: 42
+  max_steps: 1000000
+  wandb_project: "strategy-resource"
+  wandb_mode: "online"
+  wandb_tags: "training,reward-shaping,test-single"
+  no_tensorboard: true
+  quiet: true

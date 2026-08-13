@@ -18,7 +18,8 @@ func observation() -> Array:
 		field.grid_position.y if field else -1,
 		target_position.grid_position.x if target_position else -1,
 		target_position.grid_position.y if target_position else -1,
-		state_mapping.get(state_machine.current_state_name, -1)
+		state_mapping.get(state_machine.current_state_name, -1),
+		1
 	]
 
 func reachable_fields() -> Array:

@@ -1,0 +1,33 @@
+# Base hyperparameters / CLI flags applied when running a sweep.
+# Usage: python -m torch_files.train --sweep_config torch_files/sweep.yaml
+# Swept parameters live in torch_files/sweep.yaml; this file provides the base
+# hyperparams (lr, gamma, ...) that are not part of the sweep search space.
+# Note: write lr as 0.0003 (PyYAML parses `3e-4` as a string).
+
+hyperparams:
+  lr: 0.0003
+  gamma: 0.99
+  lam: 0.95
+  epochs: 5
+  batch_size: 64
+  rollout_size: 256
+  entropy_coef_start: 0.2
+  entropy_coef_end: 0.01
+  entropy_target: 0.5
+  entropy_adapt_lr: 0.1
+  adaptive_entropy: true
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+
+cli:
+  instances: 8
+  eval_instances: 4
+  eval_episodes: 20
+  eval_every_timesteps: 10000
+  seed: 42
+  max_steps: 1000000
+  wandb_project: "strategy-resource"
+  wandb_mode: "online"
+  wandb_tags: "training,reward-shaping,sweep-base"
+  no_tensorboard: true
+  quiet: true

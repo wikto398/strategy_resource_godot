@@ -47,9 +47,15 @@ class GameNetwork(nn.Module):
         )
         self.building_encoder = nn.Embedding(n_buildings, d_model)
 
-        self.builder_to_builder_attention = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-        self.builder_to_cell_attention = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
-        self.builder_to_global_attention = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
+        self.builder_to_builder_attention = nn.MultiheadAttention(
+            d_model, n_heads, batch_first=True
+        )
+        self.builder_to_cell_attention = nn.MultiheadAttention(
+            d_model, n_heads, batch_first=True
+        )
+        self.builder_to_global_attention = nn.MultiheadAttention(
+            d_model, n_heads, batch_first=True
+        )
 
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -66,7 +72,9 @@ class GameNetwork(nn.Module):
         self.build_cell_head = nn.Sequential(
             nn.Conv2d(build_in_ch, build_spatial_ch, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(build_spatial_ch, build_spatial_ch // 2, kernel_size=3, padding=1),
+            nn.Conv2d(
+                build_spatial_ch, build_spatial_ch // 2, kernel_size=3, padding=1
+            ),
             nn.ReLU(),
             nn.Conv2d(build_spatial_ch // 2, 1, kernel_size=1),
         )
@@ -80,17 +88,21 @@ class GameNetwork(nn.Module):
     @staticmethod
     def _safe_logits(logits: torch.Tensor) -> torch.Tensor:
         """Make logits safe for Categorical: replace non-finite with -inf, all-masked rows -> 0."""
-        safe = torch.where(torch.isfinite(logits), logits, torch.full_like(logits, float("-inf")))
+        safe = torch.where(
+            torch.isfinite(logits), logits, torch.full_like(logits, float("-inf"))
+        )
         all_masked = torch.isneginf(safe).all(dim=-1, keepdim=True)
         return safe.masked_fill(all_masked, 0.0)
 
     def _categorical(self, logits: torch.Tensor) -> Categorical:
         return Categorical(logits=self._safe_logits(logits))
 
-    def _get_logits(self, obs: TensorDict, action_mask: TensorDict | None) -> TensorDict:
-        cell_features    = obs["fields"]    # (B, cells, cell_features)
-        global_features  = obs["global"]   # (B, global_features)
-        builder_features = obs["builders"] # (B, builders, builder_features)
+    def _get_logits(
+        self, obs: TensorDict, action_mask: TensorDict | None
+    ) -> TensorDict:
+        cell_features = obs["fields"]  # (B, cells, cell_features)
+        global_features = obs["global"]  # (B, global_features)
+        builder_features = obs["builders"]  # (B, builders, builder_features)
         B = cell_features.size(0)
         n_builders = builder_features.size(1)
         n_buildings = self.n_buildings
@@ -98,36 +110,72 @@ class GameNetwork(nn.Module):
 
         device = cell_features.device
 
-        moveable_cells      = action_mask["moveable_cells"]      if action_mask is not None else torch.ones((B, n_builders, n_cells), dtype=torch.bool, device=device)
-        buildable_cells     = action_mask["buildable_cells"]     if action_mask is not None else torch.ones((B, n_buildings, n_cells), dtype=torch.bool, device=device)
-        available_buildings = action_mask["available_buildings"] if action_mask is not None else torch.ones((B, n_buildings), dtype=torch.bool, device=device)
-        available_builders  = action_mask["available_builders"]  if action_mask is not None else torch.ones((B, n_builders), dtype=torch.bool, device=device)
-        available_skip      = action_mask["available_skip"]      if action_mask is not None else torch.ones((B,), dtype=torch.bool, device=device)
+        moveable_cells = (
+            action_mask["moveable_cells"]
+            if action_mask is not None
+            else torch.ones((B, n_builders, n_cells), dtype=torch.bool, device=device)
+        )
+        buildable_cells = (
+            action_mask["buildable_cells"]
+            if action_mask is not None
+            else torch.ones((B, n_buildings, n_cells), dtype=torch.bool, device=device)
+        )
+        available_buildings = (
+            action_mask["available_buildings"]
+            if action_mask is not None
+            else torch.ones((B, n_buildings), dtype=torch.bool, device=device)
+        )
+        available_builders = (
+            action_mask["available_builders"]
+            if action_mask is not None
+            else torch.ones((B, n_builders), dtype=torch.bool, device=device)
+        )
+        real_builders = (
+            action_mask["real_builders"]
+            if action_mask is not None
+            else torch.ones((B, n_builders), dtype=torch.bool, device=device)
+        )
+        available_skip = (
+            action_mask["available_skip"]
+            if action_mask is not None
+            else torch.ones((B,), dtype=torch.bool, device=device)
+        )
 
         available_builders = available_builders.bool()
+        real_builders = real_builders.bool()
         available_buildings = available_buildings.bool()
         moveable_cells = moveable_cells.bool()
         buildable_cells = buildable_cells.bool()
         available_skip = available_skip.bool()
 
-        builder_can_move = available_builders & moveable_cells.any(dim=-1)          # (B, n_builders)
-        building_can_build = available_buildings & buildable_cells.any(dim=-1)      # (B, n_buildings)
-        can_move = builder_can_move.any(dim=-1)                                     # (B,)
-        can_build = building_can_build.any(dim=-1)                                   # (B,)
+        builder_can_move = available_builders & moveable_cells.any(
+            dim=-1
+        )  # (B, n_builders)
+        building_can_build = available_buildings & buildable_cells.any(
+            dim=-1
+        )  # (B, n_buildings)
+        can_move = builder_can_move.any(dim=-1)  # (B,)
+        can_build = building_can_build.any(dim=-1)  # (B,)
 
-        cell_encoded   = self.cell_encoder(cell_features)              # (B, cells, d_model)
-        global_encoded = self.global_encoder(global_features)          # (B, d_model)
+        cell_encoded = self.cell_encoder(cell_features)  # (B, cells, d_model)
+        global_encoded = self.global_encoder(global_features)  # (B, d_model)
 
         H, W = self.grid_h, self.grid_w
         if n_cells != H * W:
             raise ValueError(f"n_cells={n_cells} != grid_h*grid_w={H * W}")
 
-        bt = self.building_encoder(torch.arange(n_buildings, device=device))  # (n_buildings, d_model)
+        bt = self.building_encoder(
+            torch.arange(n_buildings, device=device)
+        )  # (n_buildings, d_model)
         bt = bt.unsqueeze(0).expand(B, -1, -1)  # (B, n_buildings, d_model)
 
-        cell_map = cell_encoded.view(B, H, W, -1).permute(0, 3, 1, 2)  # (B, d_model, H, W)
+        cell_map = cell_encoded.view(B, H, W, -1).permute(
+            0, 3, 1, 2
+        )  # (B, d_model, H, W)
         cell_map = self.build_cell_to_map(cell_map)  # (B, c_cell, H, W)
-        cell_map = cell_map.unsqueeze(1).expand(-1, n_buildings, -1, -1, -1)  # (B, n_b, c_cell, H, W)
+        cell_map = cell_map.unsqueeze(1).expand(
+            -1, n_buildings, -1, -1, -1
+        )  # (B, n_b, c_cell, H, W)
 
         bt_cond = self.build_building_to_cond(bt)  # (B, n_b, c_cond)
         bt_map = bt_cond.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, -1, H, W)
@@ -139,10 +187,14 @@ class GameNetwork(nn.Module):
         build_in = build_in.reshape(B * n_buildings, build_in.size(2), H, W)
         build_cell_logits = self.build_cell_head(build_in).flatten(1)  # (B*n_b, H*W)
         build_cell_logits = build_cell_logits.view(B, n_buildings, n_cells)
-        build_cell_logits = build_cell_logits.masked_fill(~buildable_cells, float("-inf"))
+        build_cell_logits = build_cell_logits.masked_fill(
+            ~buildable_cells, float("-inf")
+        )
 
         building_logits = self.building_head(global_encoded)
-        building_logits = building_logits.masked_fill(~building_can_build, float("-inf"))
+        building_logits = building_logits.masked_fill(
+            ~building_can_build, float("-inf")
+        )
 
         builder_encoded = self.builder_encoder(builder_features)
 
@@ -153,7 +205,9 @@ class GameNetwork(nn.Module):
             key_padding_mask[no_builders, 0] = False
 
         x, _ = self.builder_to_builder_attention(
-            builder_encoded, builder_encoded, builder_encoded,
+            builder_encoded,
+            builder_encoded,
+            builder_encoded,
             key_padding_mask=key_padding_mask,
         )
         x = self.norm1(builder_encoded + x)
@@ -171,9 +225,10 @@ class GameNetwork(nn.Module):
         pool_mask = available_builders.unsqueeze(-1).float()
         pooled = x.mul(pool_mask).sum(dim=1) / pool_mask.sum(dim=1).clamp(min=1.0)
 
-        real_builders = builder_features.sum(dim=-1) > 0
         real_pool_mask = real_builders.unsqueeze(-1).float()
-        pooled_real = x.mul(real_pool_mask).sum(dim=1) / real_pool_mask.sum(dim=1).clamp(min=1.0)
+        pooled_real = x.mul(real_pool_mask).sum(dim=1) / real_pool_mask.sum(
+            dim=1
+        ).clamp(min=1.0)
 
         builder_logits = self.builder_head(x).squeeze(-1)
         builder_logits = builder_logits.masked_fill(~builder_can_move, float("-inf"))
@@ -199,14 +254,16 @@ class GameNetwork(nn.Module):
             torch.cat([pooled_real, global_encoded, cell_summary], dim=-1)
         )
 
-        return TensorDict({
-            "action_logits":     action_logits,
-            "builder_logits":    builder_logits,
-            "building_logits":   building_logits,
-            "move_cell_logits":  move_cell_logits,
-            "build_cell_logits": build_cell_logits,
-            "value":             value,
-        })
+        return TensorDict(
+            {
+                "action_logits": action_logits,
+                "builder_logits": builder_logits,
+                "building_logits": building_logits,
+                "move_cell_logits": move_cell_logits,
+                "build_cell_logits": build_cell_logits,
+                "value": value,
+            }
+        )
 
     def _choose(self, logits: torch.Tensor) -> torch.Tensor:
         if self.deterministic:
@@ -240,21 +297,23 @@ class GameNetwork(nn.Module):
 
         return torch.stack([action, builder, building, cell], dim=-1)
 
-    def _compute_log_prob(self, logits: TensorDict, actions: torch.Tensor) -> torch.Tensor:
+    def _compute_log_prob(
+        self, logits: TensorDict, actions: torch.Tensor
+    ) -> torch.Tensor:
         B = actions.size(0)
         batch_idx = torch.arange(B, device=actions.device)
 
-        action   = actions[:, 0]
-        builder  = actions[:, 1]
+        action = actions[:, 0]
+        builder = actions[:, 1]
         building = actions[:, 2]
-        cell     = actions[:, 3]
+        cell = actions[:, 3]
 
-        is_move  = action == 1
+        is_move = action == 1
         is_build = action == 2
 
         # Same logits / masks as sampling — no extra sample-only masking.
-        action_lp   = self._categorical(logits["action_logits"]).log_prob(action)
-        builder_lp  = self._categorical(logits["builder_logits"]).log_prob(builder)
+        action_lp = self._categorical(logits["action_logits"]).log_prob(action)
+        builder_lp = self._categorical(logits["builder_logits"]).log_prob(builder)
         building_lp = self._categorical(logits["building_logits"]).log_prob(building)
         move_cell_lp = self._categorical(
             logits["move_cell_logits"][batch_idx, builder]
@@ -264,27 +323,34 @@ class GameNetwork(nn.Module):
         ).log_prob(cell)
 
         entity_lp = torch.where(
-            is_move, builder_lp,
+            is_move,
+            builder_lp,
             torch.where(is_build, building_lp, torch.zeros_like(builder_lp)),
         )
         cell_lp = torch.where(
-            is_move, move_cell_lp,
+            is_move,
+            move_cell_lp,
             torch.where(is_build, build_cell_lp, torch.zeros_like(move_cell_lp)),
         )
 
         return action_lp + entity_lp + cell_lp
 
-    def forward(self, obs: TensorDict, action_mask: TensorDict | None = None) -> TensorDict:
-        logits  = self._get_logits(obs, action_mask)
+    def forward(
+        self, obs: TensorDict, action_mask: TensorDict | None = None
+    ) -> TensorDict:
+        logits = self._get_logits(obs, action_mask)
         actions = self._sample_actions(logits)
         log_prob = self._compute_log_prob(logits, actions)
-        value    = logits["value"].squeeze(-1)
+        value = logits["value"].squeeze(-1)
 
-        return TensorDict({
-            "action":   actions,
-            "log_prob": log_prob,
-            "value":    value,
-        }, batch_size=obs.batch_size)
+        return TensorDict(
+            {
+                "action": actions,
+                "log_prob": log_prob,
+                "value": value,
+            },
+            batch_size=obs.batch_size,
+        )
 
     def _safe_entropy(self, logits: torch.Tensor) -> torch.Tensor:
         all_masked = ~torch.isfinite(logits).any(dim=-1)
@@ -292,7 +358,12 @@ class GameNetwork(nn.Module):
         entropy = entropy.masked_fill(all_masked, 0.0)
         return entropy
 
-    def evaluate(self, obs: TensorDict, actions: torch.Tensor, action_mask: TensorDict | None = None) -> TensorDict:
+    def evaluate(
+        self,
+        obs: TensorDict,
+        actions: torch.Tensor,
+        action_mask: TensorDict | None = None,
+    ) -> TensorDict:
         logits = self._get_logits(obs, action_mask)
         log_probs = self._compute_log_prob(logits, actions)
 
@@ -309,8 +380,12 @@ class GameNetwork(nn.Module):
         action_ent = self._safe_entropy(logits["action_logits"])
         builder_ent = self._safe_entropy(logits["builder_logits"])
         building_ent = self._safe_entropy(logits["building_logits"])
-        move_cell_ent = self._safe_entropy(logits["move_cell_logits"][batch_idx, builder])
-        build_cell_ent = self._safe_entropy(logits["build_cell_logits"][batch_idx, building])
+        move_cell_ent = self._safe_entropy(
+            logits["move_cell_logits"][batch_idx, builder]
+        )
+        build_cell_ent = self._safe_entropy(
+            logits["build_cell_logits"][batch_idx, building]
+        )
 
         ew = self.entropy_weights
         entropy = (
@@ -327,8 +402,11 @@ class GameNetwork(nn.Module):
             )
         )
 
-        return TensorDict({
-            "log_probs": log_probs,
-            "value": logits["value"].squeeze(-1),
-            "entropy": entropy,
-        }, batch_size=obs.batch_size)
+        return TensorDict(
+            {
+                "log_probs": log_probs,
+                "value": logits["value"].squeeze(-1),
+                "entropy": entropy,
+            },
+            batch_size=obs.batch_size,
+        )

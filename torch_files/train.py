@@ -18,7 +18,7 @@ def main():
     if args.sweep_config:
         trainer.sweep(Trainer.load_sweep_config(args.sweep_config))
     else:
-        trainer.run()
+        trainer.run(overrides=getattr(args, "hyperparams", None))
 
 
 if __name__ == "__main__":

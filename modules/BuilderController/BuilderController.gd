@@ -103,5 +103,5 @@ func observation() -> Array:
 		obs.append(builder.observation())
 
 	while obs.size() < GameData.MAX_BUILDERS:
-		obs.append([0,0,0,0,0])
+		obs.append([0,0,0,0,0,0])
 	return obs

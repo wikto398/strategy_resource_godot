@@ -56,6 +56,7 @@ No GDScript test suite in-repo. No root CI.
 
 - Transport: **UDP localhost**. Defaults in `rl_tools/utils/config.py`: obs ports `5000+id`, action ports `5500+id`, `INSTANCES=2`
 - Godot reads CLI via autoload `ArgsParser`: `action_receiver_port`, `observation_receiver_port`, `python_host`, `godot_host`, `log_level`, `log_to_file`
+- Only engine-consumed args are forwarded to Godot: ports (set explicitly) plus the allowlist `GODOT_ARG_ALLOWLIST` in `RLIntializer.py` (`log_level`, `log_to_file`, `seed`, `render`). All other CLI args stay Trainer-only; pass extra engine flags with repeatable `--engine_args key=value`
 - Handshake: env → `ENV_READY` → trainer `TRAINER_READY` → env `TRAINER_READY_ACK` → trainer `START_TRAINING`
 - Observations: MessagePack dict `{observation, action_mask, reward, done, info}` (`ObservationCollector` + `Messagepack.encode`); `info` carries `{won, lost}` and, on the `done` step, an episode summary (`turns`, `population`, `working_population`, `total_resources`, `production`, `buildings_started`, `buildings_completed`, `reward_breakdown`) consumed by eval/play metrics
 - Actions: raw byte list via `bytearray(action)` — **not** msgpack. Layout handled by `ActionExecutor`:
@@ -137,6 +138,9 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
     --wandb_project strategy-resource --wandb_mode online \
     --sweep_config torch_files/sweep.yaml --sweep_count 10 --max_steps 1_000_000
   ```
+  `--seed N` seeds Python/NumPy/PyTorch RNG (`_seed_rng` in `rl_tools/rl/Trainer`) **and** the Godot
+  map stream. Sweep trials each re-seed with the same base seed, so per-trial differences come
+  only from the sampled hyperparameters. `torch_files/play.py` seeds the same way.
   `--max_steps N` stops each run at ~N global steps (overrides `--iterations`;
   derived as `ceil(max_steps / (rollout_size * instances))`). Without it, `--iterations`
   governs.
@@ -144,6 +148,21 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   raises on `offline`/`disabled`. Trials run sequentially in one agent process (no
   Godot port conflicts). Sampled hyperparameters are recorded in `run.config` via
   `config.update()`; the search metric is `eval/win_rate`.
+
+### YAML config (non-sweep)
+
+- `--config torch_files/config.yaml` loads hyperparameters and CLI flags from a YAML
+  file so a good sweep trial can be replayed standalone (example committed).
+  `hyperparams` keys map straight to `PPOAgent`/Adam (the sweepable set + extras:
+  `lr, gamma, lam, epochs, batch_size, rollout_size, entropy_coef_*, entropy_target,
+  entropy_adapt_lr, adaptive_entropy, clip_epsilon, value_loss_coef`). `cli` keys map
+  to any argparse dest. (`torch_files/sweep_config.yaml` holds the base sweep params;
+  the swept search space lives in `torch_files/sweep.yaml`.)
+- **CLI flags override the file**; the file only fills values not set on the command
+  line. Unknown keys are ignored with a warning. Applies to non-sweep runs only
+  (`--sweep_config` ignores `--config`).
+- **YAML gotcha:** write `lr` as `0.0003` (PyYAML parses `3e-4` as a string, not a
+  float).
 
 ### Early stopping
 

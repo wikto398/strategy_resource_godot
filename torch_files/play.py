@@ -7,6 +7,7 @@ import torch
 from rl_tools.game_engine.HeadlessGameEngine import HeadlessGameEngine
 from rl_tools.rl.Environment import Environment
 from rl_tools.rl.RLInitializer import RLInitializer
+from rl_tools.rl.Trainer import _seed_rng
 from torch_files.Factory import (
     StrategyNetworkFactory,
     StrategyNormalizersFactory,
@@ -53,7 +54,7 @@ def parse_args() -> argparse.Namespace:
         "--seed",
         type=int,
         default=None,
-        help="Map seed base (negative values = eval-style seeding)",
+        help="Seeds torch/numpy/python RNG and map seed base (negative values = eval-style seeding)",
     )
     parser.add_argument(
         "--max_steps",
@@ -96,6 +97,7 @@ def _step_env(env: Environment, action: np.ndarray) -> tuple[dict, float, bool, 
 def main() -> None:
     args = parse_args()
     args.game_engine_type = HeadlessGameEngine.GameEngineType.GODOT
+    _seed_rng(args.seed)
 
     initializer = RLInitializer(args)
     log = initializer.main_logger

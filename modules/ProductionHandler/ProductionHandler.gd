@@ -48,7 +48,7 @@ func start_production(building: Building, field: Field) -> void:
 	var total_cost = 0
 	for resource in building.build_cost.values():
 		total_cost += resource
-	Global.add_to_reward.emit(min(2.0, 0.05 * total_cost / 100.0), "build_start")
+	Global.add_to_reward.emit(min(2.0, 0.10 * total_cost / 100.0), "build_start")
 	building.building_started(field)
 	building_started.emit(building)
 	field.in_progress_building = building

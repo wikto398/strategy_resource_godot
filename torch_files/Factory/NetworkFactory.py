@@ -39,7 +39,7 @@ class StrategyNetworkFactory(NetworkFactory):
             n_cell_features=7,
             n_global_features=15,
             n_buildings=len(BUILDING_NAMES),
-            n_builder_features=5,
+            n_builder_features=6,
             d_model=128,
             n_heads=4,
             grid_h=12,
