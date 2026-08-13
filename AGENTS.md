@@ -145,6 +145,28 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   Godot port conflicts). Sampled hyperparameters are recorded in `run.config` via
   `config.update()`; the search metric is `eval/win_rate`.
 
+### Early stopping
+
+Both callbacks live in `rl_tools/rl/Callback/StopTrainingCallback/`, read the metric
+from the blackboard's `eval/latest` dict (so they must be wired **after** `EvalCallback`),
+and stop gracefully via `request_stop()` (clean checkpoint + W&B finish; a sweep then
+moves to the next trial). They are appended to the flat `CallbackList` in the Trainer.
+
+- **`MetricStopCallback`** (persistent pruning): `--stop_metric <name>`
+  (e.g. `win_rate`), `--stop_threshold 0.05`, `--stop_patience 3`. Stops when the metric
+  stays bad (below/above threshold per `--gate_goal`/default below) for `patience`
+  consecutive evals; the counter resets on recovery.
+- **`GateStopCallback`** (one-shot go/no-go): fires once when `global_step >= step`,
+  stops if the metric is bad, otherwise lets the run continue — then **detaches itself**
+  (`Callback.detach()` → `CallbackList.remove`). Multiple gates are supported:
+  - single gate via the legacy flags `--gate_step <N> --gate_metric win_rate
+    --gate_threshold 0.05 --gate_goal below|above`
+  - repeatable `--gate "step,metric,threshold[,goal]"` flags (one per gate)
+  - a YAML list via `--gates_config torch_files/gates.yaml` (`gates:` entries with
+    `step/metric/threshold/goal`, goal defaults to `below`)
+  All sources combine; each gate is independent and any failure stops the run.
+  The two callbacks can be combined (`--stop_metric` + gates).
+
 ## Conventions
 
 - Editor naming: PascalCase scripts/scenes (`project.godot` naming/*_casing=1)
