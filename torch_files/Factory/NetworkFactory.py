@@ -37,7 +37,7 @@ class StrategyNetworkFactory(NetworkFactory):
     def build(self):
         return GameNetwork(
             n_cell_features=7,
-            n_global_features=15,
+            n_global_features=35,
             n_buildings=len(BUILDING_NAMES),
             n_builder_features=6,
             d_model=128,

@@ -11,52 +11,67 @@ const KEYS: Array[String] = [
     "surplus_coef", "surplus_target", "surplus_stock_ratio", "surplus_stock_floor", "surplus_cap",
     "economy_cap", "peak_coef", "build_start_coef", "build_finish_coef",
     "build_finish_flat", "housing_coef", "skip_penalty", "time_penalty",
-    "production_bonus_coef",
+    "production_bonus_coef", "progress_building_coef", "special_building_bonus",
+    "prod_milestone_bonus", "pop_milestones", "prod_milestones", "stock_milestones",
 ]
 
 var gamma: float = 0.99
 var stock_warning_threshold: float = 100.0
 var stock_warning_coef: float = 0.02
-var deficit_coef: float = 0.015
+var deficit_coef: float = 0.01
 var deficit_cap: float = 5.0
 var production_penalty_cap: float = 10.0
-var production_penalty_coef: float = 0.01
-var economy_coef: float = 0.05
-var balance_coef: float = 0.2
+var production_penalty_coef: float = 0.005
+var economy_coef: float = 0.02
+var balance_coef: float = 0.05
 var gap_target: float = 10.0
 var gap_cap: float = 10.0
 var gap_coef: float = 0.05
-var productive_bonus: float = 0.3
+var productive_bonus: float = 0.05
 var construction_bonus: float = 0.2
 var first_build_bonus: float = 3.0
 var build_start_coef: float = 0.1
 var build_finish_coef: float = 0.15
 var build_finish_flat: float = 5.0
 var housing_coef: float = 1.0
-var skip_penalty: float = -0.02
+var skip_penalty: float = -0.05
 var time_penalty: float = -0.005
 var production_bonus_coef: float = 0.3
 var win_progress_coef: float = 0.005
 var over_commit_penalty: float = 0.25
 var over_commit_state_penalty: float = 0.1
-var win_bonus: float = 50.0
-var loss_penalty: float = -10.0
+var win_bonus: float = 500.0
+var loss_penalty: float = -20.0
 var loss_survival_horizon: float = 200.0
-var pop_milestone_bonus: float = 1.5
-var stock_milestone_bonus: float = 1.0
+var pop_milestone_bonus: float = 5.0
+var stock_milestone_bonus: float = 3.0
+var prod_milestone_bonus: float = 2.0
+# Milestone thresholds (rewarded by *_milestone_bonus when crossed). Configurable
+# via engine args as comma-separated lists, e.g. pop_milestones="8,12,16,20".
+# Chosen so trivial early states don't pay: CC alone (pop 3->6) crosses none.
+var pop_milestones: Array = [8, 12, 16, 20]
+var prod_milestones: Array = [20, 40, 60, 80]
+var stock_milestones: Array = [1200, 1500, 2000]
+var progress_building_coef: float = 0.1
+var special_building_bonus: float = 10.0
 var surplus_coef: float = 0.05
 var surplus_target: float = 10.0
 var surplus_stock_ratio: float = 2.0
 var surplus_stock_floor: float = 2000.0
 var surplus_cap: float = 10.0
 var economy_cap: float = 10.0
-var peak_coef: float = 0.02
+var peak_coef: float = 0.05
+
+const ARRAY_KEYS: Array[String] = ["pop_milestones", "prod_milestones", "stock_milestones"]
 
 func _ready() -> void:
     for key in KEYS:
         if not ArgsParser.kwargs.has(key):
             continue
         var raw = ArgsParser.kwargs[key]
+        if key in ARRAY_KEYS:
+            set(key, _parse_array(raw, key))
+            continue
         var value: float
         if raw is String and raw.is_valid_float():
             value = raw.to_float()
@@ -69,6 +84,21 @@ func _ready() -> void:
             continue
         set(key, value)
     DebugLogger.debug("RewardConfig loaded: " + str(_snapshot()))
+
+func _parse_array(raw, key: String) -> Array:
+    var arr: Array = []
+    if raw is Array:
+        return raw
+    if raw is String:
+        for part in raw.split(","):
+            var p = part.strip_edges()
+            if p.is_valid_int():
+                arr.append(int(p))
+            elif p.is_valid_float():
+                arr.append(p.to_float())
+            else:
+                DebugLogger.warning("RewardConfig: invalid value in array for '%s': %s" % [key, p])
+    return arr
 
 func _snapshot() -> Dictionary:
     var snapshot: Dictionary = {}

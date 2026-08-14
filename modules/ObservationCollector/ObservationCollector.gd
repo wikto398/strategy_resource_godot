@@ -1,9 +1,5 @@
 class_name ObservationCollector extends ObservationCollectorInterface
 
-const POP_MILESTONES: Array = [4, 5, 6, 8]
-const PROD_MILESTONES: Array = [5, 10, 20, 30]
-const STOCK_MILESTONES: Array = [800, 1200, 1500]
-
 @export var field_grid: TerrainFieldGrid
 @export var build_handler: BuildHandler
 @export var production_handler: ProductionHandler
@@ -15,7 +11,7 @@ var done: bool = false
 var reward = 0.0
 var last_action: Array = []
 
-const COMPONENT_KEYS: Array = ["time", "deficit", "production", "economy", "stock_warning", "milestones", "stockpile", "productive", "construction", "win_progress", "build_start", "build_finish", "first_build", "events", "move", "skip", "build", "over_commit", "over_commit_state", "balance", "housing", "resource_gap", "surplus", "terminal"]
+const COMPONENT_KEYS: Array = ["time", "deficit", "production", "economy", "stock_warning", "milestones", "stockpile", "productive", "construction", "win_progress", "build_start", "build_finish", "first_build", "events", "move", "skip", "build", "over_commit", "over_commit_state", "balance", "housing", "resource_gap", "surplus", "terminal", "progress_building", "special_building"]
 
 var episode_components: Dictionary = {}
 var pending_components: Dictionary = {}
@@ -66,6 +62,18 @@ func _on_action_executed(action: Array) -> void:
 func _on_building_started(building: Building, field: Field) -> void:
     _built_started[building.name] = _built_started.get(building.name, 0) + 1
     _pending_patches.append(_flat_of(field))
+    if building is ProductionBuilding:
+        var net = _projected_production(building.produced_resource)
+        var gap = clampf(RewardConfig.gap_target - float(net), 0.0, RewardConfig.gap_cap)
+        _on_add_to_reward(RewardConfig.progress_building_coef * gap, "progress_building")
+    elif building is HousingBuilding and not (building is CityCenter):
+        if GameData.working_population >= GameData.population:
+            _on_add_to_reward(
+                RewardConfig.progress_building_coef * float(building.population_increase),
+                "progress_building",
+            )
+    if building is SpecialBuilding:
+        _on_add_to_reward(RewardConfig.special_building_bonus, "special_building")
 
 func _on_building_completed(building: Building, field: Field) -> void:
     var count_before = _built_completed.get(building.name, 0)
@@ -187,6 +195,7 @@ func get_observation_bytes() -> PackedByteArray:
     # Flat binary protocol. Layout must stay in sync with
     # rl_tools/game_engine/ObservationInterface/UDPObservation/UDPObservation.py
     # and torch_files/Factory/NetworkFactory.py (AGENTS.md). Native little-endian.
+    # global = 4 production + 4 stock + 7 game + 10 completed + 10 in-progress = 35.
     # Call order matches get_observation() so _reward() side-effects are unchanged.
     var observation := _observation()
     var action_mask := _action_mask()
@@ -302,6 +311,15 @@ func _global_features() -> Array:
     obs.append_array(production_handler.current_production.values())
     obs.append_array(production_handler.town_resources.values())
     obs.append_array(GameData.observation())
+    # Per-building-type episode counters (ResourceDatabase order): 10 completed,
+    # then 10 in-progress (started - completed). Lets the network associate a
+    # production bump with the building-type counter bump directly.
+    for building in ResourceDatabase.buildings:
+        obs.append(float(production_handler.buildings_completed.get(building.name, 0)))
+    for building in ResourceDatabase.buildings:
+        var started = production_handler.buildings_started.get(building.name, 0)
+        var completed = production_handler.buildings_completed.get(building.name, 0)
+        obs.append(float(started - completed))
     return obs
 
 func _movable_cells() -> Array:
@@ -462,17 +480,17 @@ func _stock_warning() -> float:
 func _milestones() -> float:
     var reward_value = 0.0
     var pop = GameData.population
-    for level in POP_MILESTONES:
+    for level in RewardConfig.pop_milestones:
         if pop >= level and not _pop_milestones.has(level):
             _pop_milestones[level] = true
             reward_value += RewardConfig.pop_milestone_bonus
     var net_production = 0
     for production in production_handler.current_production.values():
         net_production += production
-    for level in PROD_MILESTONES:
+    for level in RewardConfig.prod_milestones:
         if net_production >= level and not _prod_milestones.has(level):
             _prod_milestones[level] = true
-            reward_value += 1.0
+            reward_value += RewardConfig.prod_milestone_bonus
     var min_stock = _min_stock()
     if min_stock > _peak_min_stock:
         reward_value += RewardConfig.peak_coef * (min_stock - _peak_min_stock)
@@ -482,7 +500,7 @@ func _milestones() -> float:
 func _stockpile_reward() -> float:
     var reward_value = 0.0
     var min_stock = _min_stock()
-    for level in STOCK_MILESTONES:
+    for level in RewardConfig.stock_milestones:
         if min_stock >= level and not _stock_milestones.has(level):
             _stock_milestones[level] = true
             reward_value += RewardConfig.stock_milestone_bonus
@@ -573,7 +591,10 @@ func _on_add_to_reward(value: float, tag: String = "events") -> void:
     pending_components[tag] = pending_components.get(tag, 0.0) + value
 
 func _result_score() -> float:
-    var score = RewardConfig.win_bonus if is_game_won else _loss_penalty()
+    var score = _loss_penalty()
+    if is_game_won:
+        var speed = maxf(0.0, 1.0 - float(Turn.turn) / float(Turn.max_turns))
+        score = RewardConfig.win_bonus * speed
     score += _production_bonus()
     score += _progress_bonus()
     DebugLogger.debug("Final score calculated: " + str(score))
@@ -623,7 +644,11 @@ func _has_in_progress_producer(resource: Enums.TownResource) -> bool:
     return false
 
 func _time_penalty() -> float:
-    return RewardConfig.time_penalty
+    # Grows with turn: stalling/waiting-for-death becomes increasingly expensive.
+    # The cost concentrates around turn ~1/(1-gamma) where the discounted return
+    # looks, so an idle wait is far worse than a quick (active) loss. time_penalty
+    # is negative, so multiplying by the turn grows the magnitude.
+    return RewardConfig.time_penalty * float(Turn.turn)
 
 func _empty_components() -> Dictionary:
     var components = {}

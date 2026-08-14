@@ -6,6 +6,7 @@ const STRUCTURE_PATH = "res://resources/structures/"
 var buildings: Array[Building] = []
 var int_to_building: Dictionary = {}
 var building_to_int: Dictionary = {}
+var building_name_to_int: Dictionary = {}
 var structures: Array[Structure] = []
 
 func load_buildings() -> Array[Building]:
@@ -17,6 +18,7 @@ func load_buildings() -> Array[Building]:
 			var building_index = buildings.size() - 1
 			building_to_int[building] = building_index
 			int_to_building[building_index] = building
+			building_name_to_int[building.name] = building_index
 		else:
 			DebugLogger.warning("Resource at " + building.resource_path + " is not a Building.")
 	return buildings

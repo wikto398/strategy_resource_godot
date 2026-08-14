@@ -40,7 +40,7 @@ godot --path . --headless --action_receiver_port=5500 --observation_receiver_por
 
 # Smoke multi-instance connector (cwd = repo root so project_path default "." works)
 cd /path/to/strategy_resource_godot
-PYTHONPATH=. rl_tools/.venv/bin/python -m rl_tools.main --instances 2 -k
+PYTHONPATH=. rl_tools/.venv/bin/python -m rl_tools.main --instances 2 -k --observation_class torch_files.StrategyUDPObservation.StrategyUDPObservation
 
 # Train PPO
 PYTHONPATH=. rl_tools/.venv/bin/python torch_files/train.py --instances 2 -k
@@ -62,7 +62,7 @@ No GDScript test suite in-repo. No root CI.
 - Only engine-consumed args are forwarded to Godot: ports (set explicitly) plus the allowlist `GODOT_ARG_ALLOWLIST` in `RLIntializer.py` (`log_level`, `log_to_file`, `seed`, `render`). All other CLI args stay Trainer-only; pass extra engine flags with repeatable `--engine_args key=value`
 - Handshake: env → `ENV_READY` → trainer `TRAINER_READY` → env `TRAINER_READY_ACK` → trainer `START_TRAINING`
 - Observations: MessagePack dict `{observation, action_mask, reward, done, info}` (`ObservationCollector` + `Messagepack.encode`); `info` carries `{won, lost}` and, on the `done` step, an episode summary (`turns`, `population`, `working_population`, `total_resources`, `production`, `buildings_started`, `buildings_completed`, `reward_breakdown`) consumed by eval/play metrics
-  - Wire format is a **flat binary packet** (magic `0x53 0x01`, then `fields f32(192·7) | global f32(15) | builders f32(5·6) | buildable_cells u8(10·192) | available_buildings u8(10) | moveable_cells u8(5·192) | available_builders u8(5) | real_builders u8(5) | available_skip u8(1) | reward f32 | done u8 | info_len u32 | msgpack(info)`), native little-endian. Keep the layout in sync across `modules/ObservationCollector/ObservationCollector.gd`, `rl_tools/game_engine/ObservationInterface/UDPObservation/UDPObservation.py`, and the `torch_files/Factory/NetworkFactory.py` shapes. The Python decoder falls back to MessagePack if the magic is absent.
+  - Wire format is a **flat binary packet** (magic `0x53 0x01`, then `fields f32(192·7) | global f32(35) | builders f32(5·6) | buildable_cells u8(10·192) | available_buildings u8(10) | moveable_cells u8(5·192) | available_builders u8(5) | real_builders u8(5) | available_skip u8(1) | reward f32 | done u8 | info_len u32 | msgpack(info)`), native little-endian. Keep the layout in sync across `modules/ObservationCollector/ObservationCollector.gd`, `torch_files/StrategyUDPObservation.py`, and the `torch_files/Factory/NetworkFactory.py` shapes. The Python decoder falls back to MessagePack if the magic is absent. `global` = 4 production + 4 stock + 7 game + 10 completed per-building counts + 10 in-progress counts (per-building counters registered in `ProductionHandler.buildings_started`/`buildings_completed`, in `ResourceDatabase.buildings` order). The generic `rl_tools` `UDPObservation` is a plain MessagePack observer; the game wires its flat protocol via the `StrategyUDPObservation` subclass, injected through `Trainer(..., observation_class=...)` (`torch_files/train.py`) or `--observation_class` on the `rl_tools.main` smoke connector.
 - Actions: raw byte list via `bytearray(action)` — **not** msgpack. Layout handled by `ActionExecutor`:
   - `0` next turn
   - `1, builder_id, _, cell_flat` move
@@ -95,12 +95,21 @@ extend `SinkCallback` (`rl_tools/rl/Callback/SinkCallback/`) — to add a new ou
 subclass it and implement `_write_scalar` / `_write_histogram`.
 
 - Producers (never touch TB/W&B directly): `EvalCallback`, `StrategyMetricsCallback`,
-  `TimingCallback`, PPOAgent loss/norm_scale logging. `EvalCallback` also publishes a
-  structured `eval/latest` dict on the blackboard (win_rate, returns, population…).
+  `TimingCallback`, PPOAgent loss/norm_scale logging. `EvalCallback` is generic
+  (returns/win-rate via a configurable `won_key`; inject a subclass via
+  `Trainer(..., eval_callback_class=...)`) and publishes a structured `eval/latest`
+  dict on the blackboard (win_rate, returns, length…). The game's terminal-summary
+  metrics (`eval/breakdown/*`, `eval/buildings_*`, `eval/mean_win_turns` /
+  `mean_loss_turns`, `eval/mean_end_*`) are emitted by
+  `torch_files/StrategyEvalCallback`, which overrides `_log_episode_summary`.
 - Sinks (appended **after** `EvalCallback` so eval data is flushed in the same update):
   - `ConsoleCallback` — `logger.info("Step N: key = value")` at INFO
   - `TensorboardCallback` — `SummaryWriter` (when enabled)
   - `WandbCallback` — `wandb.run` (when enabled), incl. `eval/latest` as a `wandb.Table`
+  - `CsvCallback` — long-format `step,key,value` dump of every blackboard scalar to
+    `<log_path>/metrics.csv` (off by default; enable with `--csv_metrics`). Load with
+    `pandas.read_csv` then `df[df.key == "eval/win_rate"]` or pivot on `step`. Histograms
+    are skipped.
 - **Auto-clear**: once every registered sink cursor has passed an event id, the event is
   purged (min-cursor watermark, batched every `Blackboard.CLEAR_BATCH_SIZE = 4096`
   events) so the log stays bounded. A lagging sink blocks clearing until it catches up.
@@ -110,6 +119,9 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   ignored with a warning).
 - W&B is **off by default**; enable with `--wandb_project <name>`:
   - `--wandb_entity`, `--wandb_name` (default `logs/<ts>` basename), `--wandb_tags a,b,c`
+  - Runs launched with `--expert_eps > 0` are **auto-tagged `expert-assisted`** (appended
+    by `Trainer._wandb_tags()`, deduped against `--wandb_tags`) — no need to pass it
+    manually
   - `--wandb_group <name>` groups related runs together in the dashboard; a resumed run
     cannot share a W&B run id with its finished predecessor (W&B forbids resuming
     `finished` runs), so keep segments of one experiment together with a shared
@@ -197,6 +209,41 @@ moves to the next trial). They are appended to the flat `CallbackList` in the Tr
     `step/metric/threshold/goal`, goal defaults to `below`)
   All sources combine; each gate is independent and any failure stops the run.
   The two callbacks can be combined (`--stop_metric` + gates).
+
+### Expert-in-the-loop coach
+
+- **Purpose**: bootstrap hard exploration — the agent converges to inaction/spam
+  because the balanced win line is never sampled. A scripted expert overrides a
+  fraction of training actions on-policy so good trajectories appear in the data
+  (value function learns their worth + an imitation push on the actions).
+- **Flags**: `--expert_eps 0.4 --expert_eps_decay_steps 200000` (ε linearly decays
+  to 0; at 0 the expert is inert). The **number of instances and steps per
+  iteration is constant forever** — the expert is a per-step action override
+  inside the existing envs, never extra/removed envs. Eval envs are always pure
+  agent, so `eval/win_rate` measures the real policy.
+- **Mechanics** (`rl_tools/rl/RLAgent/PolicyGradientAgent.py::_apply_expert_actions`):
+  after `get_action`, with prob `current_expert_eps()` per env the sampled action
+  is replaced with the expert's and its **log-prob recomputed under the current
+  policy** so stored `actions`/`log_probs` stay consistent for the PPO ratio
+  (batched over the selected envs; skipped when the expert agrees with the agent).
+  This is the on-policy "coach" setup: the ε-fraction is technically off-policy
+  w.r.t. the agent's induced state distribution (standard guided-RL tradeoff),
+  acceptable because ε→0. Eval envs are always pure agent.
+- **NaN/stability guards**: expert actions are mask-valid by construction (moves
+  only to `moveable_cells[builder]`, builds only to `buildable_cells[building]`,
+  skip gated on `available_skip`, else a fallback legal action), so stored
+  log-probs are finite. `PPOAgent.update` additionally clamps old/new log-probs
+  (`LOG_PROB_FLOOR`) and the log-ratio (`LOG_RATIO_CLAMP`), because expert actions
+  can be very low-probability under the agent's fresh policy and `exp` would
+  otherwise explode.
+- **Interface**: generic `ExpertInterface` ABC (`rl_tools/rl/Factory/`) + game
+  expert `torch_files/Expert/StrategyExpert.py` (a Python port of
+  `tools/scripted_play.gd`'s "balanced" policy operating on raw obs + masks),
+  injected via `StrategyExpertFactory` (`torch_files/Factory/ExpertFactory.py`).
+  Add a new game's expert by implementing `ExpertInterface`/`ExpertFactory`.
+- **Obs note**: empty cells and the City Center both report building int `0` in
+  `fields`, so `StrategyExpert` detects "city center not built" via the mask
+  (`available_buildings[0] == 1`), not the field tensor.
 
 ## Conventions
 

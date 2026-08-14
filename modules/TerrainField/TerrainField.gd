@@ -111,10 +111,10 @@ func observation() -> Array:
 	return [
 		terrain_type,
 		1 if walkable else 0,
-		ResourceDatabase.building_to_int.get(building, 0) if building else 0,
+		ResourceDatabase.building_name_to_int.get(building.name, 0) if building else 0,
 		1 if structure else 0,
 		1 if unit else 0,
-		ResourceDatabase.building_to_int.get(in_progress_building, 0) if in_progress_building else 0,
+		ResourceDatabase.building_name_to_int.get(in_progress_building.name, 0) if in_progress_building else 0,
 		progress_ratio,
 	]
 

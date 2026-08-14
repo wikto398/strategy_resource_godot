@@ -23,17 +23,17 @@ The reward is dispatched on the action that was just executed (tracked via
 
 | Component | Formula | Constants |
 |---|---|---|
-| `skip` | `_skip_reward()` | `-0.02` (`skip_penalty`) |
-| `time` | `_time_penalty()` | `-0.005` (`time_penalty`) |
-| `deficit` | `_deficit_penalty()` | `-0.015 * min(5, deficit_duration)` per resource with `town_resources[r] <= 0` |
-| `production` | `_production_penalty()` | `-0.01 * min(10, \|net_production\|)` per resource with `current_production[r] <= 0` **and** `town_resources[r] <= 0` **and no in-progress producer for `r`** — only a resource actually banked negative *and* with nothing being built about it is penalized; a healthy-stock buildout (or a negative net with full stock) is exempt |
+| `skip` | `_skip_reward()` | `-0.05` (`skip_penalty`) |
+| `time` | `_time_penalty()` | `time_penalty * turn` (`time_penalty = -0.005`) — **grows with turn**: stalling/waiting-for-death becomes increasingly expensive, concentrating its cost around turn ~1/(1-γ) where the discounted return looks (idle wait ≈ `-199`, a ~150-turn win ≈ `-35`) |
+| `deficit` | `_deficit_penalty()` | `-0.01 * min(5, deficit_duration)` per resource with `town_resources[r] <= 0` |
+| `production` | `_production_penalty()` | `-0.005 * min(10, \|net_production\|)` per resource with `current_production[r] <= 0` **and** `town_resources[r] <= 0` **and no in-progress producer for `r`** — only a resource actually banked negative *and* with nothing being built about it is penalized; a healthy-stock buildout (or a negative net with full stock) is exempt |
 | `surplus` | `_surplus_penalty()` | `-0.05 * min(10, net_r - 10)` per resource with `current_production[r] > 10` **and** `town_resources[r] > max(min_stock * 2, 2000)` — anti-spam: penalizes hoarding one resource far ahead of the others *and* past the Workshop cost (2+ Mines racing stone to thousands). Relative (ratio) + absolute (floor) gate means healthy saving/buildout is never penalized (`surplus` stays 0 on a winning line) |
-| `economy` | `_economy_reward()` | `+0.05 * Σ clamp(net_production_r, 0, 10)` — **positives-only**: negatives are ignored here because they are already penalized by `production`/`deficit`; capping the negative side prevents the buildout phase (upkeep at start, production at completion) from being double-counted and making construction lose to inaction. 3-Mine spam drops from `+0.90` to `+0.05`/turn while a balanced 1-of-each economy (`+2.0`/turn) is untouched |
-| `balance` | `_balance_reward()` | `+0.2` per resource with positive net production (max `+0.8` when all 4 positive) |
+| `economy` | `_economy_reward()` | `+0.02 * Σ clamp(net_production_r, 0, 10)` — **positives-only**: negatives are ignored here because they are already penalized by `production`/`deficit`; capping the negative side prevents the buildout phase (upkeep at start, production at completion) from being double-counted and making construction lose to inaction. 3-Mine spam drops to `+0.06`/turn while a balanced 1-of-each economy (`+0.8`/turn) is untouched |
+| `balance` | `_balance_reward()` | `+0.05` per resource with positive net production (max `+0.2` when all 4 positive) |
 | `stock_warning` | `_stock_warning()` | `-0.02 * min(3, max(0, 1 - stock_r/100))` per resource |
-| `milestones` | `_milestones()` | pop [4,5,6,8] -> +1.5 each; net prod [5,10,20,30] -> +1.0 each; `+0.02` per unit of **min-stock** growth (bottleneck resource) — rewards balanced saving, pays nothing for hoarding one resource to the cap |
-| `stockpile` | `_stockpile_reward()` | per-resource min stock crossing [800,1200,1500] -> +1.0 each (aligns with Workshop win cost) |
-| `productive` | `_productive_turn()` | `+0.3` if any builder is `building` or net production > 0 — **gated off** when at the population ceiling with no positive net production |
+| `milestones` | `_milestones()` | pop [8,12,16,20] -> +5 each; net prod [20,40,60,80] -> +2 each (`prod_milestone_bonus`); `+0.05` per unit of **min-stock** growth (bottleneck resource) — rewards building a real economy/balanced saving, pays nothing for hoarding one resource to the cap. Thresholds are configurable (`pop_milestones`/`prod_milestones`) and chosen so trivial states don't pay: City Center alone (pop 3->6) crosses none |
+| `stockpile` | `_stockpile_reward()` | per-resource min stock crossing [1200,1500,2000] -> +3 each (`stock_milestone_bonus`; 1500 = Workshop cost per resource) |
+| `productive` | `_productive_turn()` | `+0.05` if any builder is `building` or net production > 0 — **gated off** when at the population ceiling with no positive net production |
 | `construction` | `_construction_reward()` | `+0.2` per progress point gained this turn (stalled buildings — no free population working them — earn `0`; reward is bounded by `build_time` total) |
 | `win_progress` | `_win_progress()` | potential-based: `Φ = 0.005 * Σ completed build cost`, reward `γ*Φ(t) - Φ(t-1)` |
 | `over_commit_state` | `_over_commit_state_penalty()` | `-0.10 * overshoot` per turn while `in_progress_buildings > free_population` — persists for every next-turn step until the over-commit is resolved |
@@ -67,6 +67,8 @@ within a turn. Net production already accounts for upkeep.
 | `resource_gap` | production buildings | `+0.05 * clamp(GAP_TARGET - projected_production_of_produced_resource, 0, 10)` — `projected` = completed production + production of **all in-progress** buildings of that type. Up to `+0.5` when under-produced (net < 10), `0` once saturated. Counts in-progress so parallel spam fills the gap immediately (5 Mines in flight → projected ≥ 25 → 0 for every completion); a lone genuine build still earns the bonus |
 | `first_build` | first completion of each building type | `+3.0` |
 | `housing` | Housing (only while fully employed) | `+housing_coef * population_increase` — coef `1.0` |
+| `progress_building` | building start (needs-based) | production: `+progress_building_coef * clamp(gap_target - projected_production_of_produced_resource, 0, gap_cap)` — coef `0.1`, same gap metric as `resource_gap` but at **start** time so it guides *which* building to start; Housing (excl. CityCenter, only while fully employed): `+progress_building_coef * population_increase` |
+| `special_building` | start of a `SpecialBuilding` (Dock / Workshop / TownHall) | `+special_building_bonus` — coef `10.0`, one-shot nudge to commit to the win line / useful buildings |
 | `events` (default) | Special (`+0.5`) | varies |
 
 ## Terminal reward
@@ -74,10 +76,13 @@ within a turn. Net production already accounts for upkeep.
 `_result_score()` (applied once, on the `done` step):
 
 ```
-score = (+50 if won else -10)
+score = (win_bonus * speed  if won  else  -10)   # win_bonus 500, speed = max(0, 1 - turn/max_turns)
       + production_bonus   (Σ current_production * production_bonus_coef, coef `0.3`)
       + progress_bonus     ((population + working_population) * 0.1)
 ```
+
+`speed` rewards fast wins (turn 150 → 0.925; turn 1000 → 0.5; turn 1900 → 0.05), so
+stalling to keep collecting per-step income is doubly punished (see "boom" note below).
 
 ## Observability
 
@@ -91,7 +96,8 @@ Episode ended (WON|LOST). Reward breakdown: {"time": ..., "stock_warning": ..., 
 Component keys: `time`, `deficit`, `production`, `surplus`, `economy`, `stock_warning`,
 `milestones`, `stockpile`, `productive`, `construction`, `win_progress`,
 `build_start`, `build_finish`, `first_build`, `events`, `move`, `skip`, `build`,
-`over_commit`, `over_commit_state`, `balance`, `housing`, `resource_gap`, `terminal`.
+`over_commit`, `over_commit_state`, `balance`, `housing`, `resource_gap`, `terminal`,
+`progress_building`, `special_building`.
 
 The win/loss outcome is also shipped to the trainer via the observation message's
 `info` dict (`{"won": is_game_won, "lost": done and not is_game_won}`), which drives
@@ -132,8 +138,11 @@ Keys are snake_case matching the autoload var names: `economy_coef`, `economy_ca
 `first_build_bonus`, `win_progress_coef`, `over_commit_penalty`, `over_commit_state_penalty`,
 `win_bonus`,
 `loss_penalty`, `loss_survival_horizon`, `pop_milestone_bonus`, `stock_milestone_bonus`,
+`prod_milestone_bonus`, `pop_milestones`, `prod_milestones`, `stock_milestones`,
 `gamma`, `peak_coef`, `build_start_coef`, `build_finish_coef`, `build_finish_flat`,
 `housing_coef`, `skip_penalty`, `time_penalty`, `production_bonus_coef`,
+`progress_building_coef`, `special_building_bonus`,
+`progress_building_coef`, `special_building_bonus`,
 and the `surplus_*` set
 (`surplus_coef`, `surplus_target`, `surplus_stock_ratio`, `surplus_stock_floor`, `surplus_cap`).
 
@@ -143,10 +152,12 @@ and the `surplus_*` set
   computed on the next observation, so it reflects the effects of that action.
 - Penalties/shaping fire once per turn (on the next-turn action), not per action.
 - Milestone/peak state lives on the collector and resets with each episode (scene
-  reload). Thresholds are chosen so they are not passed at game start (start pop is 3,
-  start net production is 0, start stock is 800 per resource; stockpile milestones
-  start at 800 so the agent must actually save, and prod milestones require positive
-  net production).
+  reload). Thresholds are chosen so they are **not passed at game start or by trivial
+  play**: start pop is 3 (City Center alone reaches 6, below the `pop_milestones` floor
+  of 8 — no free pop-milestone reward), start stock is 800 (below the 1200 stockpile
+  floor), and prod milestones require a real buildout. This prevents the agent from
+  farming cheap early milestones (the observed "housing-milestone" exploit) instead of
+  progressing toward the win.
 - The over-commit penalty (`over_commit`) fires on the build action itself (not the
   next-turn action) when **any** building is started while
   `in_progress_buildings > free_population`, scaled by the degree of over-commit
@@ -161,7 +172,27 @@ and the `surplus_*` set
   `-10 * (1 - min(turn / loss_survival_horizon, 1))` scaling made any loss after turn
   200 cost `0`, so "spam cheap buildings for completion bonuses, survive past 200, die
   free" was a genuine local optimum. With a flat penalty a slow death is just as costly
-  as a fast one, and `win_bonus` (+50) clearly dominates the per-step shaping terms.
+  as a fast one, and `win_bonus` clearly dominates the per-step shaping terms.
+- **Anti-"endless boom"**: with the old coefficients a mature economy netted ~`+3.0`/step
+  indefinitely, so refusing to build the Workshop/TownHall and stalling to turn 2000 was
+  worth ~2x a fast win (verified: discounted ~612 vs ~355 at `gamma=0.995`). Fixed by
+  (1) cutting the per-step income ceiling (`economy_coef 0.05→0.01`, `balance_coef
+  0.2→0.05`, `productive_bonus 0.3→0.05` → stall net ≈ `+0.55`/step, boom ≈ ~198) and
+  (2) making the win bonus speed-scaled (`win_bonus 50→500`, `× max(0, 1 - turn/2000)`).
+  Verified post-fix: win ≈ **349** vs boom ≈ **198** discounted (~1.8x; `gamma=0.995`
+  halves the terminal at turn 150, so the undiscounted bonus must be large).
+  `progress_building` (needs-based start bonus) and `special_building` (start bonus for
+  Dock/Workshop/TownHall) additionally nudge the agent to commit to the win line.
+- **Anti-"do nothing / wait for death"**: a flat per-step stall cost (`-0.025`/step) was
+  ~`-5` discounted — nearly free — and the turn-2000 timeout death was invisible under
+  `gamma=0.995`. The agent converged to "build City Center, skip to death" (~840 turns,
+  `win_rate=0`). Fixed by making the time cost **grow with turn** (`time_penalty * turn`:
+  idle ≈ `-199` discounted vs a ~150-turn win ≈ `-35`), raising `skip_penalty` to `-0.05`
+  and `loss_penalty` to `-20`, and increasing the progress rewards so a real economy pays:
+  `pop_milestone_bonus 5`, `stock_milestone_bonus 3`, `prod_milestone_bonus 2`, `peak_coef
+  0.05`. `economy_coef` restored to `0.02` (safe — the growing time penalty already kills
+  the boom), while `deficit_coef`/`production_penalty_coef` were softened (`0.01`/`0.005`)
+  so buildout friction doesn't outweigh building.
 - The buildout phase (upkeep applied at construction start, production only at
   completion) is **not double-counted**: `economy` is positives-only (negatives are
   ignored there) and `production` only penalizes a resource that is actually **banked

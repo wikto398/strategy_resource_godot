@@ -35,6 +35,12 @@ var current_deficit_duration: Dictionary[Enums.TownResource, int] = {
 	Enums.TownResource.GOLD: 0
 }
 
+# Per-building-name episode counters, keyed by building.name. Reset implicitly
+# by scene reload on environment reset. Consumed by ObservationCollector's
+# global features (completed counts + in-progress = started - completed).
+var buildings_started: Dictionary = {}
+var buildings_completed: Dictionary = {}
+
 func can_afford(cost: Dictionary[Enums.TownResource, int]) -> bool:
 	for resource in cost.keys():
 		if town_resources.get(resource, 0) < cost[resource]:
@@ -51,6 +57,7 @@ func start_production(building: Building, field: Field) -> void:
 	Global.add_to_reward.emit(min(2.0, RewardConfig.build_start_coef * total_cost / 100.0), "build_start")
 	building.building_started(field)
 	building_started.emit(building, field)
+	buildings_started[building.name] = buildings_started.get(building.name, 0) + 1
 	field.in_progress_building = building
 	resources_updated.emit(town_resources)
 	field.building_finished.connect(_on_building_finished)
@@ -69,6 +76,7 @@ func setup():
 func _on_building_finished(field: Field) -> void:
 	var in_progress_building = field.in_progress_building
 	if in_progress_building:
+		buildings_completed[in_progress_building.name] = buildings_completed.get(in_progress_building.name, 0) + 1
 		if in_progress_building is ProductionBuilding:
 			_on_production_building_finished(in_progress_building, field)
 		field.building = in_progress_building
