@@ -76,7 +76,8 @@ No GDScript test suite in-repo. No root CI.
 
 ## Architecture notes
 
-- Autoloads (see `project.godot`): ArgsParser, DebugLogger, Enums, Shaders, Icons, Turn, ResourceDatabase, GameData, Global
+- Autoloads (see `project.godot`): ArgsParser, RewardConfig, DebugLogger, Enums, Shaders, Icons, Turn, ResourceDatabase, GameData, Global
+- Reward coefficients live as plain vars on the `RewardConfig` autoload (`globals/RewardConfig.gd`); override at launch via `--engine_args` or `config.yaml` `engine_args:` (see `rewards.md`)
 - RL loop lives under MainGame’s `EnvironmentConnector` (UDPReceiver / UDPSender / ObservationCollector / ActionExecutor) — not a separate autoload scene for training
 - Shared contracts in `godot_tools`: `ActionExecutorInterface`, `ObservationCollectorInterface`, `SenderInterface`/`ReceiverInterface`
 - Turn flow / win-loss: `Turn`, `Global.game_won` / `game_lost`, reward hooks via `Global.add_to_reward`
@@ -109,6 +110,10 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   ignored with a warning).
 - W&B is **off by default**; enable with `--wandb_project <name>`:
   - `--wandb_entity`, `--wandb_name` (default `logs/<ts>` basename), `--wandb_tags a,b,c`
+  - `--wandb_group <name>` groups related runs together in the dashboard; a resumed run
+    cannot share a W&B run id with its finished predecessor (W&B forbids resuming
+    `finished` runs), so keep segments of one experiment together with a shared
+    `--wandb_name <exp> --wandb_group <exp>` on every continuation
   - `--wandb_mode offline|online|disabled` (default `offline` — no network)
   - Run files (config/scalars/histograms) land in `logs/<ts>/wandb/offline-run-*`
     alongside other logs (already gitignored via `logs/`). Sync later:
@@ -160,8 +165,11 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   `hyperparams` keys map straight to `PPOAgent`/Adam (the sweepable set + extras:
   `lr, gamma, lam, epochs, batch_size, rollout_size, entropy_coef_*, entropy_target,
   entropy_adapt_lr, adaptive_entropy, clip_epsilon, value_loss_coef`). `cli` keys map
-  to any argparse dest. (`torch_files/sweep_config.yaml` holds the base sweep params;
-  the swept search space lives in `torch_files/sweep.yaml`.)
+  to any argparse dest. `engine_args` keys are forwarded verbatim to every Godot
+  instance (train + eval), same path as repeatable CLI `--engine_args` (CLI wins on
+  key conflicts) — used for game-side knobs like the `RewardConfig` reward
+  coefficients (`globals/RewardConfig.gd`). (`torch_files/sweep_config.yaml` holds
+  the base sweep params; the swept search space lives in `torch_files/sweep.yaml`.)
 - **CLI flags override the file**; the file only fills values not set on the command
   line. Unknown keys are ignored with a warning. Applies to non-sweep runs only
   (`--sweep_config` ignores `--config`).

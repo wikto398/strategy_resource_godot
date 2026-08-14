@@ -1,30 +1,8 @@
 class_name ObservationCollector extends ObservationCollectorInterface
 
-const GAMMA: float = 0.99
-const STOCK_WARNING_THRESHOLD: float = 100.0
-const STOCK_WARNING_COEF: float = 0.05
-const DEFICIT_COEF: float = 0.025
-const DEFICIT_CAP: float = 5.0
-const PRODUCTION_PENALTY_CAP: float = 10.0
-const PRODUCTION_PENALTY_COEF: float = 0.02
-const ECONOMY_COEF: float = 0.05
-const BALANCE_COEF: float = 0.125
-const GAP_TARGET: float = 10.0
-const GAP_CAP: float = 10.0
-const GAP_COEF: float = 0.05
-const PRODUCTIVE_BONUS: float = 0.15
-const CONSTRUCTION_BONUS: float = 0.05
-const FIRST_BUILD_BONUS: float = 3.0
-const WIN_PROGRESS_COEF: float = 0.002
-const OVER_COMMIT_PENALTY: float = 1.0
-const WIN_BONUS: float = 25.0
-const LOSS_PENALTY: float = -10.0
-const LOSS_SURVIVAL_HORIZON: float = 200.0
 const POP_MILESTONES: Array = [4, 5, 6, 8]
-const POP_MILESTONE_BONUS: float = 0.5
 const PROD_MILESTONES: Array = [5, 10, 20, 30]
 const STOCK_MILESTONES: Array = [800, 1200, 1500]
-const STOCK_MILESTONE_BONUS: float = 1.0
 
 @export var field_grid: TerrainFieldGrid
 @export var build_handler: BuildHandler
@@ -37,11 +15,11 @@ var done: bool = false
 var reward = 0.0
 var last_action: Array = []
 
-const COMPONENT_KEYS: Array = ["time", "deficit", "production", "economy", "stock_warning", "milestones", "stockpile", "productive", "construction", "win_progress", "build_start", "build_finish", "first_build", "events", "move", "skip", "build", "over_commit", "balance", "housing", "resource_gap", "terminal"]
+const COMPONENT_KEYS: Array = ["time", "deficit", "production", "economy", "stock_warning", "milestones", "stockpile", "productive", "construction", "win_progress", "build_start", "build_finish", "first_build", "events", "move", "skip", "build", "over_commit", "over_commit_state", "balance", "housing", "resource_gap", "surplus", "terminal"]
 
 var episode_components: Dictionary = {}
 var pending_components: Dictionary = {}
-var _peak_total: float = 0.0
+var _peak_min_stock: float = 0.0
 var _phi_applied: float = 0.0
 var _completed_value: float = 0.0
 var _built_types: Dictionary = {}
@@ -55,6 +33,7 @@ var _gate_cache: Array = []
 var _field_masks_cache: Array = []
 var _pending_patches: Array[int] = []
 var _field_masks_initialized: bool = false
+var _prev_progress: Dictionary = {}
 var _pop_milestones: Dictionary = {}
 var _prod_milestones: Dictionary = {}
 var _stock_milestones: Dictionary = {}
@@ -79,7 +58,7 @@ func _ready() -> void:
     if production_handler != null:
         production_handler.building_started.connect(_on_building_started)
         production_handler.building_completed.connect(_on_building_completed)
-    _peak_total = _total_resources()
+    _peak_min_stock = _min_stock()
 
 func _on_action_executed(action: Array) -> void:
     last_action = action
@@ -98,13 +77,15 @@ func _on_building_completed(building: Building, field: Field) -> void:
     var first = not _built_types.has(building.name)
     _built_types[building.name] = true
     if first:
-        _on_add_to_reward(FIRST_BUILD_BONUS, "first_build")
+        _on_add_to_reward(RewardConfig.first_build_bonus, "first_build")
     if building is ProductionBuilding:
-        var reward_value = building.production_rate * 0.5 / (1.0 + count_before)
+        var reward_value = building.production_rate * RewardConfig.build_finish_coef / (1.0 + count_before)
         _on_add_to_reward(reward_value, "build_finish")
         var net = _projected_production(building.produced_resource)
-        var gap = clampf(GAP_TARGET - float(net), 0.0, GAP_CAP)
-        _on_add_to_reward(GAP_COEF * gap, "resource_gap")
+        var gap = clampf(RewardConfig.gap_target - float(net), 0.0, RewardConfig.gap_cap)
+        _on_add_to_reward(RewardConfig.gap_coef * gap, "resource_gap")
+    else:
+        _on_add_to_reward(RewardConfig.build_finish_flat / (1.0 + count_before), "build_finish")
     _pending_patches.append(_flat_of(field))
     for neighbor in field_grid.get_neighbours(field.grid_position):
         _pending_patches.append(_flat_of(neighbor))
@@ -148,8 +129,10 @@ func _reward() -> float:
                 var stockpile = _stockpile_reward()
                 var productive = _productive_turn()
                 var construction = _construction_reward()
+                var surplus = _surplus_penalty()
                 var win_progress = _win_progress()
-                total += skip + time + deficit + production + economy + balance + stock_warning + milestones + stockpile + productive + construction + win_progress
+                var over_commit_state = _over_commit_state_penalty()
+                total += skip + time + deficit + production + economy + balance + stock_warning + milestones + stockpile + productive + construction + surplus + win_progress + over_commit_state
                 components["skip"] = skip
                 components["time"] = time
                 components["deficit"] = deficit
@@ -161,7 +144,9 @@ func _reward() -> float:
                 components["stockpile"] = stockpile
                 components["productive"] = productive
                 components["construction"] = construction
+                components["surplus"] = surplus
                 components["win_progress"] = win_progress
+                components["over_commit_state"] = over_commit_state
 
         RewardMode.AFTER_MOVE:
             var move = _move_reward()
@@ -422,6 +407,14 @@ func _build_reward() -> float:
     var additional_reward = 0.0
     return additional_reward
 
+func _over_commit_overshoot() -> int:
+    var in_progress = 0
+    for field in field_grid.ordered_fields:
+        if field.in_progress_building != null:
+            in_progress += 1
+    var free_population = GameData.population - GameData.working_population
+    return in_progress - free_population
+
 func _over_commit_penalty() -> float:
     var building_type: int = last_action.get(2)
     if building_type == null:
@@ -429,22 +422,26 @@ func _over_commit_penalty() -> float:
     var building: Building = ResourceDatabase.int_to_building.get(building_type)
     if building == null:
         return 0.0
-    var in_progress = 0
-    for field in field_grid.ordered_fields:
-        if field.in_progress_building != null:
-            in_progress += 1
-    if GameData.working_population + in_progress > GameData.population:
-        DebugLogger.debug("Starting " + building.name + " with too many buildings in progress. Applying over-commit penalty.")
-        return -OVER_COMMIT_PENALTY
+    var overshoot = _over_commit_overshoot()
+    if overshoot > 0:
+        DebugLogger.debug("Starting " + building.name + " with too many buildings in progress. Applying over-commit penalty scaled by overshoot.")
+        return -RewardConfig.over_commit_penalty * overshoot
+    return 0.0
+
+func _over_commit_state_penalty() -> float:
+    var overshoot = _over_commit_overshoot()
+    if overshoot > 0:
+        DebugLogger.debug("Still overcommitted by " + str(overshoot) + " buildings. Applying per-turn over-commit state penalty.")
+        return -RewardConfig.over_commit_state_penalty * overshoot
     return 0.0
 
 func _skip_reward() -> float:
-    return -0.05
+    return RewardConfig.skip_penalty
 
 func _economy_reward() -> float:
     var reward_value = 0.0
     for production in production_handler.current_production.values():
-        reward_value += production * ECONOMY_COEF
+        reward_value += clampf(production, 0.0, RewardConfig.economy_cap) * RewardConfig.economy_coef
     return reward_value
 
 func _balance_reward() -> float:
@@ -452,14 +449,14 @@ func _balance_reward() -> float:
     for production in production_handler.current_production.values():
         if production > 0:
             positive_count += 1
-    return BALANCE_COEF * positive_count
+    return RewardConfig.balance_coef * positive_count
 
 func _stock_warning() -> float:
     var penalty = 0.0
     for resource in production_handler.town_resources.keys():
         var stock = production_handler.town_resources[resource]
-        var shortfall = max(0.0, 1.0 - stock / STOCK_WARNING_THRESHOLD)
-        penalty -= STOCK_WARNING_COEF * min(3.0, shortfall)
+        var shortfall = max(0.0, 1.0 - stock / RewardConfig.stock_warning_threshold)
+        penalty -= RewardConfig.stock_warning_coef * min(3.0, shortfall)
     return penalty
 
 func _milestones() -> float:
@@ -468,7 +465,7 @@ func _milestones() -> float:
     for level in POP_MILESTONES:
         if pop >= level and not _pop_milestones.has(level):
             _pop_milestones[level] = true
-            reward_value += POP_MILESTONE_BONUS
+            reward_value += RewardConfig.pop_milestone_bonus
     var net_production = 0
     for production in production_handler.current_production.values():
         net_production += production
@@ -476,10 +473,10 @@ func _milestones() -> float:
         if net_production >= level and not _prod_milestones.has(level):
             _prod_milestones[level] = true
             reward_value += 1.0
-    var total = _total_resources()
-    if total > _peak_total:
-        reward_value += 0.02 * (total - _peak_total)
-        _peak_total = total
+    var min_stock = _min_stock()
+    if min_stock > _peak_min_stock:
+        reward_value += RewardConfig.peak_coef * (min_stock - _peak_min_stock)
+        _peak_min_stock = min_stock
     return reward_value
 
 func _stockpile_reward() -> float:
@@ -488,7 +485,7 @@ func _stockpile_reward() -> float:
     for level in STOCK_MILESTONES:
         if min_stock >= level and not _stock_milestones.has(level):
             _stock_milestones[level] = true
-            reward_value += STOCK_MILESTONE_BONUS
+            reward_value += RewardConfig.stock_milestone_bonus
     return reward_value
 
 func _min_stock() -> float:
@@ -516,18 +513,36 @@ func _productive_turn() -> float:
             if production > 0:
                 productive = true
                 break
-    return PRODUCTIVE_BONUS if productive else 0.0
+    return RewardConfig.productive_bonus if productive else 0.0
 
 func _construction_reward() -> float:
-    var count = 0
+    var total_progress = 0
     for field in field_grid.ordered_fields:
-        if field.in_progress_building != null:
-            count += 1
-    return CONSTRUCTION_BONUS * count
+        var building = field.in_progress_building
+        if building == null:
+            continue
+        var key = _flat_of(field)
+        var prev = _prev_progress.get(key, 0)
+        _prev_progress[key] = building.building_progress
+        total_progress += maxi(0, building.building_progress - prev)
+    return RewardConfig.construction_bonus * float(total_progress)
+
+func _surplus_penalty() -> float:
+    var penalty = 0.0
+    var min_stock = _min_stock()
+    for resource in production_handler.current_production.keys():
+        var net = production_handler.current_production[resource]
+        if net <= RewardConfig.surplus_target:
+            continue
+        var threshold := maxf(min_stock * RewardConfig.surplus_stock_ratio, RewardConfig.surplus_stock_floor)
+        if production_handler.town_resources.get(resource, 0) <= threshold:
+            continue
+        penalty -= RewardConfig.surplus_coef * min(RewardConfig.surplus_cap, float(net) - RewardConfig.surplus_target)
+    return penalty
 
 func _win_progress() -> float:
-    var phi = WIN_PROGRESS_COEF * _completed_value
-    var reward_value = GAMMA * phi - _phi_applied
+    var phi = RewardConfig.win_progress_coef * _completed_value
+    var reward_value = RewardConfig.gamma * phi - _phi_applied
     _phi_applied = phi
     return reward_value
 
@@ -558,7 +573,7 @@ func _on_add_to_reward(value: float, tag: String = "events") -> void:
     pending_components[tag] = pending_components.get(tag, 0.0) + value
 
 func _result_score() -> float:
-    var score = WIN_BONUS if is_game_won else _loss_penalty()
+    var score = RewardConfig.win_bonus if is_game_won else _loss_penalty()
     score += _production_bonus()
     score += _progress_bonus()
     DebugLogger.debug("Final score calculated: " + str(score))
@@ -566,8 +581,7 @@ func _result_score() -> float:
     return score
 
 func _loss_penalty() -> float:
-    var frac = clampf(float(Turn.turn) / LOSS_SURVIVAL_HORIZON, 0.0, 1.0)
-    return LOSS_PENALTY * (1.0 - frac)
+    return RewardConfig.loss_penalty
 
 func _progress_bonus() -> float:
     var score = 0.0
@@ -578,14 +592,14 @@ func _progress_bonus() -> float:
 func _production_bonus() -> float:
     var score = 0.0
     for production in production_handler.current_production.values():
-        score += production * 0.1
+        score += production * RewardConfig.production_bonus_coef
     return score
 
 func _deficit_penalty() -> float:
     var penalty = 0.0
     for resource in production_handler.town_resources.keys():
         if production_handler.town_resources[resource] <= 0:
-            penalty -= DEFICIT_COEF * min(DEFICIT_CAP, production_handler.current_deficit_duration[resource])
+            penalty -= RewardConfig.deficit_coef * min(RewardConfig.deficit_cap, production_handler.current_deficit_duration[resource])
     DebugLogger.debug("Deficit penalty calculated: " + str(penalty))
     return penalty
 
@@ -593,13 +607,23 @@ func _production_penalty() -> float:
     var penalty = 0.0
     for resource in production_handler.current_production.keys():
         if production_handler.current_production[resource] <= 0:
-            penalty -= PRODUCTION_PENALTY_COEF * min(PRODUCTION_PENALTY_CAP, -production_handler.current_production[resource])
+            if production_handler.town_resources[resource] > 0:
+                continue
+            if _has_in_progress_producer(resource):
+                continue
+            penalty -= RewardConfig.production_penalty_coef * min(RewardConfig.production_penalty_cap, -production_handler.current_production[resource])
     DebugLogger.debug("Production penalty calculated: " + str(penalty))
     return penalty
 
+func _has_in_progress_producer(resource: Enums.TownResource) -> bool:
+    for field in field_grid.ordered_fields:
+        var in_progress: Building = field.in_progress_building
+        if in_progress is ProductionBuilding and in_progress.produced_resource == resource:
+            return true
+    return false
+
 func _time_penalty() -> float:
-    var time_penalty = -0.01
-    return time_penalty
+    return RewardConfig.time_penalty
 
 func _empty_components() -> Dictionary:
     var components = {}

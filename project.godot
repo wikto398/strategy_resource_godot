@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 ArgsParser="*uid://bq3x6gwvh2k2m"
+RewardConfig="*res://globals/RewardConfig.gd"
 DebugLogger="*uid://5e6vryw67t8y"
 Enums="*uid://cl25beyu3ts0a"
 Shaders="*uid://bno5e1jm3g10e"

@@ -17,4 +17,5 @@ class StrategyNormalizersFactory(NormalizersFactory):
         return cls()
 
     def build(self, args):
-        return make_normalizers(args, gamma=0.99)
+        gamma = float((getattr(args, "hyperparams", None) or {}).get("gamma", 0.99))
+        return make_normalizers(args, gamma=gamma)

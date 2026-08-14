@@ -95,7 +95,86 @@ func _run_bench() -> void:
 
 	_run_field_masks_checks(collector, grid, build_handler)
 
+	_run_reward_checks(collector)
+
 	_dump_packets(collector)
+
+func _run_reward_checks(collector) -> void:
+	var prod = collector.production_handler
+	var saved_prod: Dictionary = prod.current_production.duplicate()
+	var saved_res: Dictionary = prod.town_resources.duplicate()
+	var saved_action: Array = collector.last_action.duplicate()
+	var saved_peak: float = collector._peak_min_stock
+
+	var rich_stock := {0: 500, 1: 3000, 2: 500, 3: 500}
+	var close_stock := {0: 500, 1: 800, 2: 500, 3: 500}
+	var flat_stock := {0: 500, 1: 500, 2: 500, 3: 500}
+	var save_stock := {0: 2210, 1: 2100, 2: 2360, 3: 1662}
+	var buildout_stock := {0: 1000, 1: 900, 2: 1100, 3: 300}
+
+	collector.last_action = [0]
+	var surplus_cases := [
+		{"label": "3 mines hoarding (stone 3000)", "prod": {0: -3, 1: 27, 2: -3, 3: -3}, "stock": rich_stock, "expected": -0.5},
+		{"label": "2 mines hoarding (stone 3000)", "prod": {0: -2, 1: 17, 2: -2, 3: -2}, "stock": rich_stock, "expected": -0.35},
+		{"label": "1 mine rich stock", "prod": {0: -1, 1: 9, 2: -1, 3: -1}, "stock": rich_stock, "expected": 0.0},
+		{"label": "3 mines close stock (stone 800)", "prod": {0: -3, 1: 27, 2: -3, 3: -3}, "stock": close_stock, "expected": 0.0},
+		{"label": "2-of-each balanced not hoarding", "prod": {0: 17, 1: 17, 2: 17, 3: 17}, "stock": flat_stock, "expected": 0.0},
+		{"label": "healthy endgame saving", "prod": {0: 11, 1: 11, 2: 11, 3: 13}, "stock": save_stock, "expected": 0.0},
+		{"label": "buildout gold lagging", "prod": {0: 11, 1: 11, 2: 11, 3: -5}, "stock": buildout_stock, "expected": 0.0},
+	]
+	for c in surplus_cases:
+		for k in (c["prod"] as Dictionary).keys():
+			prod.current_production[int(k)] = c["prod"][k]
+		for k in (c["stock"] as Dictionary).keys():
+			prod.town_resources[int(k)] = c["stock"][k]
+		var before: float = collector.episode_components.get("surplus", 0.0)
+		collector._reward()
+		var got: float = collector.episode_components.get("surplus", 0.0) - before
+		var expected: float = c["expected"]
+		var ok := absf(got - expected) < 1e-6
+		print("surplus[%s]: got=%.4f expected=%.4f %s" % [c["label"], got, expected, "OK" if ok else "FAIL"])
+		if not ok:
+			DebugLogger.error("SURPLUS CHECK FAILED for %s" % c["label"])
+
+	for k in saved_prod.keys():
+		prod.current_production[int(k)] = saved_prod[k]
+	for k in saved_res.keys():
+		prod.town_resources[int(k)] = saved_res[k]
+
+	# economy_cap: 3-mine spam (stone 27, others -3) caps stone at 10.
+	for k in prod.current_production.keys():
+		prod.current_production[int(k)] = -3
+	prod.current_production[1] = 27
+	_check("economy 3-mine spam", collector._economy_reward(), 0.05)
+	for k in prod.current_production.keys():
+		prod.current_production[int(k)] = 9
+	_check("economy balanced 1-of-each", collector._economy_reward(), 1.8)
+
+	# Peak bonus on min-stock growth only.
+	for k in prod.current_production.keys():
+		prod.current_production[int(k)] = 0
+	collector._peak_min_stock = 100.0
+	for k in prod.town_resources.keys():
+		prod.town_resources[int(k)] = 300
+	_check("peak balanced growth (min 100->300)", collector._milestones(), 4.0)
+	collector._peak_min_stock = 100.0
+	for k in prod.town_resources.keys():
+		prod.town_resources[int(k)] = 100
+	prod.town_resources[1] = 3000
+	_check("peak hoarding one resource", collector._milestones(), 0.0)
+
+	for k in saved_prod.keys():
+		prod.current_production[int(k)] = saved_prod[k]
+	for k in saved_res.keys():
+		prod.town_resources[int(k)] = saved_res[k]
+	collector._peak_min_stock = saved_peak
+	collector.last_action = saved_action
+
+func _check(label: String, got: float, expected: float) -> void:
+	var ok := absf(got - expected) < 1e-6
+	print("%s: got=%.4f expected=%.4f %s" % [label, got, expected, "OK" if ok else "FAIL"])
+	if not ok:
+		DebugLogger.error("CHECK FAILED: %s" % label)
 
 func _dump_packets(collector) -> void:
 	var flat: PackedByteArray = collector.get_observation_bytes()

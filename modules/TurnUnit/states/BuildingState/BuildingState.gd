@@ -15,3 +15,4 @@ func update(_delta: float, _user: Node) -> void:
                 change_state.emit("idle")
         else:
             DebugLogger.trace("{unit} has no building to work on.".format({unit = _user.name}))
+            change_state.emit("idle")

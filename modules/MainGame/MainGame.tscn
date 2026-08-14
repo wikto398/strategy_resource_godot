@@ -34,12 +34,12 @@ city_center = ExtResource("2_5y0dg")
 [node name="ProductionHandler" type="Node" parent="." unique_id=219689088]
 script = ExtResource("5_76dbn")
 town_resources = Dictionary[int, int]({
-0: 500,
-1: 500,
-2: 500,
-3: 500
+0: 800,
+1: 800,
+2: 800,
+3: 800
 })
-max_deficit_duration = 20
+max_deficit_duration = 40
 metadata/_custom_type_script = "uid://d05nuswnhnsd1"
 
 [node name="BuildHandler" type="Node" parent="." unique_id=1262118961 node_paths=PackedStringArray("field_grid", "production_handler")]

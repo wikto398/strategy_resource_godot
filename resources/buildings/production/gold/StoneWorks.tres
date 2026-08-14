@@ -50,7 +50,7 @@ metadata/_custom_type_script = "uid://dcte2mefk2aqh"
 [resource]
 script = ExtResource("3_frsfv")
 produced_resource = 3
-production_rate = 10
+production_rate = 20
 name = "Stone Works"
 icon = ExtResource("6_vx4au")
 upkeep_cost = Dictionary[int, int]({

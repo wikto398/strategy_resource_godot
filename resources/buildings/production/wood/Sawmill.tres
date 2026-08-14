@@ -24,7 +24,7 @@ metadata/_custom_type_script = "uid://d3xkl3ulov86m"
 
 [resource]
 script = ExtResource("3_6gipb")
-production_rate = 10
+production_rate = 20
 name = "Sawmill"
 icon = ExtResource("1_ar3t5")
 upkeep_cost = Dictionary[int, int]({
