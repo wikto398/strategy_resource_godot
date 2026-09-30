@@ -205,6 +205,62 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   genomes are re-seeded `seed + g*population + i`. Stop at `generations` or when the
   best `win_rate >= stop_win_rate`. Per-generation state is saved to
   `logs/evolution-<ts>/state/gen_<g>.json`.
+- **Executor (child backend)**: children are launched through a pluggable
+  `ChildLauncher` (`rl_tools/rl/Evolution/launchers.py`). `evolution.executor:
+  process` (default) runs one `multiprocessing` child per genome; `executor:
+  docker` runs one `docker run` **container per child** (`evolution.image`
+  required). Containers get ROCm devices (`/dev/kfd`, `/dev/dri`), mount the
+  orchestrator's `root_dir` at the *same absolute path*, and read the child job
+  from `<child_dir>/job.json` via
+  `python -m rl_tools.rl.Evolution.child_main`. Bridge networking isolates each
+  child's UDP ports, so `port_offset` is 0 for containers (real offsets are kept
+  for `process` and `--docker_network host`). Knobs: `image`, `gpu`, `network`,
+  `cpus`, `memory`, `shm_size`, `extra_docker_args`; CLI equivalents
+  `--executor/--image/--docker_*/--no_docker_gpu`.
+- **Generic entrypoint**: `python -m rl_tools.rl.Evolution --space
+  <module:Class> --child_runner <module:Class>`; `torch_files/evolution.py` is a
+  thin wrapper supplying the game's specs, so `python -m torch_files.evolution`
+  still works.
+
+### Docker (isolated trainer containers)
+
+- **Images**: the framework ships two reusable, game-agnostic images in the
+  `rl_tools` submodule (`rl_tools/docker/`): **`rl-base`** (engine-agnostic —
+  ROCm 7.2.4 + Python 3.12 + `uv` + the `rl_tools` deps from `uv.lock` into
+  `/opt/venv`, outside `/app`; context `rl_tools/`, with
+  `rl_tools/.dockerignore` stripping the 13 GB `.venv`) and **`rl-godot`**
+  (Godot 4.7.2 runtime + its X/GL/font libs, `FROM rl-base`; context
+  `rl_tools/docker/godot`). `rl_tools/docker/build.sh` builds them in order.
+  `docker/Dockerfile` is the thin game layer (`FROM rl-godot:4.7.2`): copies the
+  repo to `/app`, bakes the Godot import cache (`godot --headless --path /app
+  --import`), and sets `ENTRYPOINT docker/entrypoint.sh`. Add another engine by
+  copying `rl_tools/docker/godot/` and keeping `FROM rl-base`.
+  ```bash
+  rl_tools/docker/build.sh                     # rl-base -> rl-godot
+  docker build -f docker/Dockerfile \
+      --build-arg BASE_IMAGE=rl-godot:4.7.2 -t strategy-resource:dev .
+  ```
+- **One container = one Trainer run** (it spawns its own train/eval Godot
+  subprocesses over localhost UDP, so no cross-container networking).
+  `docker/entrypoint.sh` dispatches on the first arg: `train`, `evolution`,
+  `orchestrator`, `play`, `bash`; anything else runs verbatim.
+- **Local dev**: `docker/compose.yml` — build the chain with
+  `--profile build build base godot trainer`, then
+  `run --rm trainer train --instances 2`. It bind-mounts the repo over `/app`
+  (live edits, `/opt/venv` untouched) and passes `/dev/kfd` + `/dev/dri`,
+  `seccomp=unconfined`, `ipc: host` (root already has device access, so no
+  `group_add`; `DockerLauncher` maps group *names* to host GIDs if you do set
+  them).
+- **Cloud evolution**: `docker compose -f docker/compose.yml --profile evolution
+  run --rm evolution` (or the `rl_tools` entrypoint with `--executor docker
+  --image ...`). The orchestrator container mounts `/var/run/docker.sock` and the
+  repo at **the same absolute path as the host** (`${PWD}`) so it can hand
+  identical `-v` paths to child containers. For multi-node, put `root_dir` on
+  shared storage or replace the `fitness.json` read with an object-store sink.
+- **Permissions**: containers run as root, so bind-mounted outputs (`logs/`,
+  checkpoints) are root-owned. Delete with `sudo rm -rf`, or `sudo chown -R
+  $USER logs` after a run; running the containers as your host user needs the
+  host `video`/`render` GIDs (see the compose comment).
 
 ### YAML config (non-sweep)
 

@@ -1,0 +1,43 @@
+# Build context is the repo root. Keep the context small: the host venv alone is
+# ~13 GB (ROCm torch) and must never be sent to the daemon.
+#
+# NOTE: docker only reads .dockerignore (not .gitignore), so everything below is
+# explicit.
+
+# --- VCS ---
+.git
+.gitmodules
+.gitattributes
+**/.git
+
+# --- Python ---
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.ruff_cache
+.pytest_cache
+.venv
+**/.venv
+venv
+**/venv
+
+# --- Godot import/build cache (regenerated inside the image) ---
+.godot
+
+# --- run artifacts / secrets ---
+logs
+wandb
+**/wandb
+*.pt
+**/*.pt
+.env
+
+# --- editor / design / docs (not needed at runtime) ---
+.vscode
+.idea
+.lh
+media
+*.drawio
+README.md
+rewards.md
+AGENTS.md

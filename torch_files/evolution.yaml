@@ -77,3 +77,16 @@ evolution:
   build_gate_threshold: 0.5
   build_gate_patience: 3
   # wandb_group: "evolution-myexp"
+
+  # --- child execution backend -------------------------------------------
+  # "process" (default): one multiprocessing child per genome, local dev.
+  # "docker":             one container per child, for cloud/isolated runs.
+  executor: process
+  # Docker settings (used when executor: docker). `image` is required then.
+  # image: strategy-resource:dev
+  # gpu: true          # pass ROCm devices (/dev/kfd, /dev/dri) + group/seccomp
+  # network: null      # null = Docker bridge (isolated; no port offsets needed)
+  # cpus: 8            # per-child CPU limit
+  # memory: 32g        # per-child memory limit
+  # shm_size: 2g       # /dev/shm size for the child container
+  # extra_docker_args: []   # extra `docker run` args, appended verbatim

@@ -1,0 +1,104 @@
+# Local development compose for the strategy-resource RL stack.
+#
+#   # one-time: build the framework chain (rl-base -> rl-godot) + the game image
+#   docker compose -f docker/compose.yml --profile build build base godot trainer
+#   # run a trainer
+#   docker compose -f docker/compose.yml run --rm trainer train --instances 2
+#
+# The `trainer` service bind-mounts the repo over /app so code edits apply
+# without a rebuild; /opt/venv (the ROCm torch env) lives outside /app and is
+# therefore left intact.
+
+name: strategy-resource
+
+x-rocm: &rocm
+    devices:
+        - /dev/kfd
+        - /dev/dri
+    # Containers run as root, which already has device access; no group_add
+    # needed. For a non-root run, add your host GIDs, e.g.:
+    #   group_add: ["986", "989"]   # $(getent group video render | cut -d: -f3)
+    security_opt:
+        - seccomp=unconfined
+    ipc: host
+
+services:
+    # Engine-agnostic framework base (ROCm + torch + Python + uv). Lives with the
+    # framework submodule; rebuild only when rl_tools/uv.lock changes.
+    base:
+        profiles: ["build"]
+        build:
+            context: ../rl_tools
+            dockerfile: docker/Dockerfile
+            args:
+                ROCM_VERSION: 7.2.4
+                PYTHON_VERSION: "3.12"
+        image: ${BASE_IMAGE:-rl-base:rocm7.2.4-py3.12}
+
+    # Godot engine layer on top of the base.
+    godot:
+        profiles: ["build"]
+        build:
+            context: ../rl_tools/docker/godot
+            dockerfile: Dockerfile
+            args:
+                BASE_IMAGE: ${BASE_IMAGE:-rl-base:rocm7.2.4-py3.12}
+                GODOT_VERSION: 4.7.2
+        image: ${GODOT_IMAGE:-rl-godot:4.7.2}
+
+    trainer:
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile
+            args:
+                BASE_IMAGE: ${GODOT_IMAGE:-rl-godot:4.7.2}
+        image: ${IMAGE:-strategy-resource:dev}
+        <<: *rocm
+        shm_size: 2gb
+        # Containers share the host GPU; cap CPU/RAM so parallel trainers do not
+        # starve each other (replaces the ad-hoc torch.set_num_threads(2)).
+        cpus: ${TRAINER_CPUS:-8}
+        mem_limit: ${TRAINER_MEM:-32g}
+        volumes:
+            - ../:/app
+            - ../logs:/app/logs
+        environment:
+            PYTHONPATH: /app
+            WANDB_API_KEY: ${WANDB_API_KEY:-}
+            WANDB_MODE: ${WANDB_MODE:-}
+            HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION:-}
+        command: ["train", "--instances", "2"]
+
+    # Evolution orchestrator, launched inside a container that can start sibling
+    # trainer containers via the mounted Docker socket.
+    #
+    #   docker compose -f docker/compose.yml --profile evolution run --rm evolution
+    #
+    # The repo is mounted at the SAME absolute path as on the host (${PWD}) so the
+    # orchestrator can pass identical -v paths to the child containers, and the
+    # children's fitness.json land in the host's ./logs tree.
+    evolution:
+        profiles: ["evolution"]
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile
+            args:
+                BASE_IMAGE: ${GODOT_IMAGE:-rl-godot:4.7.2}
+        image: ${IMAGE:-strategy-resource:dev}
+        volumes:
+            - ${PWD}:${PWD}
+            - /var/run/docker.sock:/var/run/docker.sock
+        working_dir: ${PWD}
+        environment:
+            PYTHONPATH: ${PWD}
+            WANDB_API_KEY: ${WANDB_API_KEY:-}
+            WANDB_MODE: ${WANDB_MODE:-}
+            HSA_OVERRIDE_GFX_VERSION: ${HSA_OVERRIDE_GFX_VERSION:-}
+        command:
+            - orchestrator
+            - --executor
+            - docker
+            - --image
+            - ${IMAGE:-strategy-resource:dev}
+            - --config
+            - torch_files/evolution.yaml

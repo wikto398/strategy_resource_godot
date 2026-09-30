@@ -1,46 +1,25 @@
-from pathlib import Path
+"""Thin, game-specific wrapper over the generic evolution CLI.
 
-import yaml
+The framework entrypoint is ``python -m rl_tools.rl.Evolution``; this module just
+supplies the hex-strategy game's genome space and child runner so callers keep
+using ``python -m torch_files.evolution``.
 
-from rl_tools.rl.Evolution import BudgetSchedule, EvolutionOrchestrator
-from rl_tools.rl.RLArgsParser import RLArgsParser
-from torch_files.Evolution.StrategyEvolutionSpace import StrategyEvolutionSpace
+Equivalent generic invocation:
 
-CHILD_RUNNER_PATH = "torch_files.Evolution.StrategyChildRunner:StrategyChildRunner"
+    python -m rl_tools.rl.Evolution \
+        --space torch_files.Evolution.StrategyEvolutionSpace:StrategyEvolutionSpace \
+        --child_runner torch_files.Evolution.StrategyChildRunner:StrategyChildRunner \
+        --config torch_files/evolution.yaml
+"""
 
+from rl_tools.rl.Evolution.cli import run_evolution
 
-def _load_evo_cfg(config_path: str | None) -> dict:
-    if not config_path:
-        return {}
-    data = yaml.safe_load(Path(config_path).read_text())
-    if isinstance(data, dict):
-        return data.get("evolution", {}) or {}
-    return {}
+SPACE_SPEC = "torch_files.Evolution.StrategyEvolutionSpace:StrategyEvolutionSpace"
+CHILD_RUNNER_SPEC = "torch_files.Evolution.StrategyChildRunner:StrategyChildRunner"
 
 
 def main():
-    args = RLArgsParser.parse_args()
-    evo_cfg = _load_evo_cfg(getattr(args, "config", None))
-    space = StrategyEvolutionSpace.genome_space()
-    budget = BudgetSchedule(
-        start=evo_cfg.get("steps_start", 50000),
-        end=evo_cfg.get("steps_end", 750000),
-        curve=evo_cfg.get("steps_curve", "geometric"),
-    )
-    resume_dir = getattr(args, "resume_evolution", None)
-    orchestrator = EvolutionOrchestrator(
-        args,
-        space,
-        budget,
-        CHILD_RUNNER_PATH,
-        evo_cfg=evo_cfg,
-        root_dir=resume_dir,
-        resume=bool(resume_dir),
-    )
-    result = orchestrator.evolve()
-    print(f"Evolution finished. Root: {orchestrator.root_dir}")
-    print("Best genome:", result.get("best_genome"))
-    print("Best fitness:", result.get("best_fitness"))
+    return run_evolution(space_spec=SPACE_SPEC, child_runner_spec=CHILD_RUNNER_SPEC)
 
 
 if __name__ == "__main__":
