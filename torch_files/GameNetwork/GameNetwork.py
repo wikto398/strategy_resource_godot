@@ -98,7 +98,10 @@ class GameNetwork(nn.Module):
         return safe.masked_fill(all_masked, 0.0)
 
     def _categorical(self, logits: torch.Tensor) -> Categorical:
-        return Categorical(logits=self._safe_logits(logits))
+        # validate_args=False: _safe_logits keeps -inf for masked entries (NaN ->
+        # -inf, all-masked rows -> 0). Default validate_args=True rejects -inf,
+        # killing the child on fully/partially-masked heads.
+        return Categorical(logits=self._safe_logits(logits), validate_args=False)
 
     def _get_logits(
         self, obs: TensorDict, action_mask: TensorDict | None

@@ -170,6 +170,42 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   Godot port conflicts). Sampled hyperparameters are recorded in `run.config` via
   `config.update()`; the search metric is `eval/win_rate`.
 
+### Evolution (generational GA over Trainers)
+
+- Runs a generational GA where **each child is one `Trainer`** in its own
+  `multiprocessing.Process` (**spawn** start method). Generic machinery lives in
+  `rl_tools/rl/Evolution/` (`GenomeSpace`, `BudgetSchedule`, `FitnessCallback`,
+  `ChildRunner`, `EvolutionOrchestrator`); game wiring in
+  `torch_files/Evolution/` (`StrategyEvolutionSpace` gene space + decode,
+  `StrategyChildRunner` which builds the strategy Trainer and adds the game's
+  stopping callbacks).
+- Config: `python -m torch_files.evolution --config torch_files/evolution.yaml`.
+  The `evolution:` YAML section holds the search knobs (population, workers,
+  instances, generations, budget schedule, gates, operators); `cli:` /
+  `hyperparams:` / `engine_args:` provide the base the genomes start from.
+- **Genome**: agent hyperparams (`lr`, `gamma`, `lam`, `epochs`, `batch_size`,
+  `entropy_coef_start`, `clip_epsilon`), reward coefficients + milestone threshold
+  lists (routed to Godot `engine_args`, comma-separated for the milestone arrays),
+  and expert on/off (`expert_eps`). Decoded by `StrategyEvolutionSpace.decode_genome`
+  into `run(overrides)` / `args.engine_args` / `args.expert_eps`.
+- **Budget curriculum**: `BudgetSchedule` scales each generation's `max_steps`
+  geometrically (default 50k → 750k over the generations) so early generations are
+  cheap probes; the orchestrator runs `workers` children at a time (rolling batch,
+  generation barrier), each on `instances` train + `eval_instances` eval Godot
+  processes with a per-child `--port_offset` to avoid UDP collisions.
+- **Fitness**: lexicographic `(win_rate, -mean_win_turns, buildings_completed)` —
+  scale-invariant across children with different reward coefficients. `FitnessCallback`
+  writes `fitness.json` per child (crashed children rank worst via `win_rate=-1`).
+- **Early stopping per child**: `MetricStopCallback` on `win_rate` (opt-in via
+  `evolution.win_rate_gate`) and on `buildings_started` (stops a child that builds
+  nothing for N evals). Both metrics come from `eval/latest` — the buildings totals
+  are added by `torch_files/StrategyEvalCallback` (non-City-Center sums).
+- Selection: top-`elite_count` genomes carried over + tournament (k=`tournament_k`)
+  with uniform crossover (`crossover_rate`) and per-gene mutation (`mutation_rate`);
+  genomes are re-seeded `seed + g*population + i`. Stop at `generations` or when the
+  best `win_rate >= stop_win_rate`. Per-generation state is saved to
+  `logs/evolution-<ts>/state/gen_<g>.json`.
+
 ### YAML config (non-sweep)
 
 - `--config torch_files/config.yaml` loads hyperparameters and CLI flags from a YAML

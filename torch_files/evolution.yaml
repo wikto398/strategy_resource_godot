@@ -1,0 +1,79 @@
+# Base config + evolution section for the evolutionary parameter search.
+# Usage: python -m torch_files.evolution --config torch_files/evolution.yaml
+# `hyperparams` / `engine_args` provide the base the genomes start from and
+# override; the `evolution` section configures the search itself.
+
+hyperparams:
+  lr: 0.0003
+  gamma: 0.995
+  lam: 0.95
+  epochs: 5
+  batch_size: 64
+  rollout_size: 1024
+  entropy_coef_start: 0.2
+  entropy_coef_end: 0.01
+  entropy_target: 0.5
+  entropy_adapt_lr: 0.1
+  adaptive_entropy: true
+  clip_epsilon: 0.2
+  value_loss_coef: 0.5
+
+cli:
+  seed: 42
+  wandb_project: "strategy-resource"
+  wandb_mode: "offline"
+  wandb_tags: "training,evolution"
+  no_tensorboard: true
+  quiet: true
+
+# Game-side args forwarded verbatim to every Godot instance (train + eval).
+# Genomes override these per child via the engine_args routing.
+engine_args:
+  economy_coef: 0.02
+  surplus_coef: 0.05
+  over_commit_penalty: 0.25
+  over_commit_state_penalty: 0.1
+  build_finish_coef: 0.15
+  win_bonus: 500
+  pop_milestone_bonus: 5
+  stock_milestone_bonus: 3
+  prod_milestone_bonus: 2
+  peak_coef: 0.05
+  pop_milestones: "8,12,16,20"
+  prod_milestones: "20,40,60,80"
+  stock_milestones: "1200,1500,2000"
+  housing_coef: 1.0
+  stock_warning_coef: 0.02
+  win_progress_coef: 0.005
+  skip_penalty: -0.05
+  time_penalty: -0.005
+  production_bonus_coef: 0.3
+  production_penalty_coef: 0.005
+  construction_bonus: 0.2
+  productive_bonus: 0.05
+  balance_coef: 0.05
+  build_start_coef: 0.1
+  deficit_coef: 0.01
+  progress_building_coef: 0.1
+  special_building_bonus: 10
+
+evolution:
+  population: 8
+  workers: 2
+  instances: 4
+  eval_instances: 2
+  eval_episodes: 5
+  eval_every: 10000
+  generations: 30
+  steps_start: 50000
+  steps_end: 750000
+  steps_curve: "geometric"
+  stop_win_rate: 0.6
+  elite_count: 1
+  tournament_k: 3
+  mutation_rate: 0.2
+  crossover_rate: 0.8
+  win_rate_gate: 0.0
+  build_gate_threshold: 0.5
+  build_gate_patience: 3
+  # wandb_group: "evolution-myexp"
