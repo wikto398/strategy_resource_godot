@@ -205,6 +205,25 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
   genomes are re-seeded `seed + g*population + i`. Stop at `generations` or when the
   best `win_rate >= stop_win_rate`. Per-generation state is saved to
   `logs/evolution-<ts>/state/gen_<g>.json`.
+- **Strategy (algorithm policy)**: the algorithm is pluggable and lives in
+  `rl_tools/rl/Evolution/strategy/` — `EvolutionOrchestrator` is only the engine
+  (worker slots, launcher, logging, snapshots, stops), and an `EvolutionStrategy`
+  decides bootstrap/selection/reproduction. `generational` (default) preserves the
+  original generational GA; `pbt` is steady-state PBT-lite. Select with
+  `evolution.strategy: generational|pbt` (or `--strategy`, or a `module:Class`).
+  Shared types: `Individual`, `Population`, `Stats`. Generational knobs stay flat
+  under `evolution:`; PBT knobs nest under `evolution.pbt:`.
+- **PBT-lite** (`strategy: pbt`): every free worker slot launches an `epoch_steps`
+  child; the genome is a mutated copy of a tournament-selected donor, and with
+  probability `exploit_fraction` the child warm-starts from that donor's
+  checkpoint (`child_config["checkpoint"]` → `--checkpoint`, optimizer loaded,
+  RNG reset). No generation barrier, so no slot waits on a straggler. Knobs:
+  `population` (defaults to `workers`), `epoch_steps`, `exploit_fraction`,
+  `mutate_rate`, `mutate_scale`, `tournament_k`, `elite_count`. PBT does not
+  support `--resume_evolution`.
+- **Hard stops (any strategy)**: `evolution.max_steps` (sum of child budgets) and
+  `evolution.max_wall_hours` (`--max_wall_hours`) cap a run — use them as a cloud
+  spend guard.
 - **Executor (child backend)**: children are launched through a pluggable
   `ChildLauncher` (`rl_tools/rl/Evolution/launchers.py`). `evolution.executor:
   process` (default) runs one `multiprocessing` child per genome; `executor:

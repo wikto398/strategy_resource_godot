@@ -58,6 +58,13 @@ engine_args:
   special_building_bonus: 10
 
 evolution:
+  # --- strategy ---------------------------------------------------------
+  # "generational" (default): a population per generation + barrier, elitism,
+  #                           tournament selection, crossover/mutation.
+  # "pbt":                    steady-state, one child per free slot, warm-started
+  #                           from a donor checkpoint (PBT-lite). See `pbt:` below.
+  strategy: generational
+
   population: 8
   workers: 2
   instances: 4
@@ -77,6 +84,20 @@ evolution:
   build_gate_threshold: 0.5
   build_gate_patience: 3
   # wandb_group: "evolution-myexp"
+
+  # --- hard stops (any strategy; useful as a cloud spend guard) ----------
+  # max_steps: 4000000          # stop after ~N child steps total
+  # max_wall_hours: 8           # stop after N hours
+
+  # --- PBT-lite settings (used when strategy: pbt) -----------------------
+  # pbt:
+  #   population: 4             # pool size (defaults to `workers`)
+  #   epoch_steps: 50000        # steps per child before its slot is refilled
+  #   exploit_fraction: 0.5     # prob. a new child warm-starts from its donor
+  #   mutate_rate: 1.0          # per-gene mutation probability
+  #   mutate_scale: 1.2         # multiplier on each gene's own mutate_scale
+  #   tournament_k: 3
+  #   elite_count: 1            # never evict the top-N
 
   # --- child execution backend -------------------------------------------
   # "process" (default): one multiprocessing child per genome, local dev.

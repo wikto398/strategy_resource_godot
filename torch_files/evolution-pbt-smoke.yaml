@@ -1,0 +1,43 @@
+# Minimal PBT-lite smoke config: tests the Docker executor with 1-2 containers.
+#
+#   python -m torch_files.evolution --config torch_files/evolution-pbt-smoke.yaml
+#
+# workers: 1 -> exactly one container at a time.
+# max_steps: 10000 (= 2 x epoch_steps) -> child 0 trains from scratch, child 1
+# warm-starts from child 0's checkpoint (exploit_fraction: 1.0).
+# Set max_steps: 5000 for a single-container-only run.
+
+hyperparams:
+  rollout_size: 256
+  batch_size: 64
+  epochs: 2
+
+cli:
+  seed: 42
+  wandb_mode: "offline"
+  no_tensorboard: true
+  quiet: true
+
+evolution:
+  strategy: pbt
+  workers: 1              # exactly ONE container at a time
+  instances: 1            # one train Godot per child
+  eval_instances: 1
+  eval_episodes: 1
+  eval_every: 5000
+  stop_win_rate: 2.0      # never stop on win rate
+  max_steps: 10000        # 2 children x 5000 -> stop
+  max_wall_hours: 1
+
+  executor: docker
+  image: strategy-resource:dev
+  gpu: true
+  cpus: 4
+  memory: 16g
+  shm_size: 2g
+
+  pbt:
+    population: 1         # defaults to workers
+    epoch_steps: 5000
+    exploit_fraction: 1.0 # child 2 warm-starts from child 1
+    mutate_scale: 1.2
