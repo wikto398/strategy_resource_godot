@@ -224,6 +224,16 @@ subclass it and implement `_write_scalar` / `_write_histogram`.
 - **Hard stops (any strategy)**: `evolution.max_steps` (sum of child budgets) and
   `evolution.max_wall_hours` (`--max_wall_hours`) cap a run — use them as a cloud
   spend guard.
+- **Orchestrator W&B stats (any strategy)**: on every child completion the engine
+  logs `evolution/run/*` — avg/median/best/worst `win_rate` (crashed children
+  excluded from the averages, counted in `crashed`), buildings/global-step means,
+  `completed_steps`, `elapsed_hours`, `steps_per_second`, `children_running`,
+  `pool_size`, `crashed`, `stopped_early` — plotted against a custom x-axis
+  (`evolution/run/children`) so they coexist with the generational
+  `step=generation` series. The pool table (`evolution/run/pool`: genome,
+  fitness, lineage) logs every `evolution.wandb_table_every` children (default
+  20, 0 = off). `best.json`/final summary also carry `mean_win_rate`,
+  `completed_children`, `completed_steps`, `crashed_children`, `elapsed_hours`.
 - **Executor (child backend)**: children are launched through a pluggable
   `ChildLauncher` (`rl_tools/rl/Evolution/launchers.py`). `evolution.executor:
   process` (default) runs one `multiprocessing` child per genome; `executor:
